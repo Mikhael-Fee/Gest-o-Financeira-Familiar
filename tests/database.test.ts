@@ -44,6 +44,8 @@ beforeAll(async () => {
     "202611120007_settlement_corrections.sql",
     "202611120008_loan_receipts.sql",
     "202611120009_effective_dates.sql",
+    "202611120010_monthly_income.sql",
+    "202611120011_partial_loan_calendar.sql",
   ]) {
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
   }
@@ -815,5 +817,159 @@ describe("PostgreSQL, RLS, GRANTs e comandos ACID", () => {
         )
       ).rows,
     ).toEqual([{ count: 1 }]);
+  });
+  it("previsões mensais são privadas, versionadas e não movimentam caixa", async () => {
+    await command(b, "salary", { base: 300000, payday: 5 });
+    const balance = (
+      await db.query(`select private.account_balance('${acc}')::bigint balance`)
+    ).rows[0];
+    const key = crypto.randomUUID();
+    const payload = {
+      month: "2026-11",
+      expected: 280000,
+      version: 0,
+      future: true,
+      reference_version: 0,
+    };
+    await command(b, "income_month", payload, key);
+    await command(b, "income_month", payload, key);
+    expect(
+      (
+        await db.query(
+          `select private.account_balance('${acc}')::bigint balance`,
+        )
+      ).rows[0],
+    ).toEqual(balance);
+    expect(
+      (await asUser(a, "select * from public.income_months")).rows,
+    ).toHaveLength(0);
+    expect(
+      (await asUser(a, "select * from public.income_references")).rows,
+    ).toHaveLength(0);
+    await expect(
+      command(b, "income_month", { ...payload, expected: 290000 }),
+    ).rejects.toThrow(/conflict/);
+    expect(
+      (
+        await db.query(
+          `select base from public.income_references where owner_id='${b}' and effective_month='0001-01'`,
+        )
+      ).rows,
+    ).toEqual([{ base: 300000 }]);
+  });
+  it("correção de salário não duplica receita e admin não pode editar recebimento privado", async () => {
+    const obj = crypto.randomUUID();
+    await command(b, "entry", {
+      id: obj,
+      description: "Salário corrigível",
+      kind: "income",
+      income_type: "salary",
+      amount: 100000,
+      occurred_on: "2026-11-10",
+      salary_month: "2026-10",
+      category: "Salário",
+      house: false,
+      consumer_id: b,
+      card_id: null,
+      splits: [{ account_id: acc, amount: 100000 }],
+    });
+    const before = (
+      await db.query(`select private.account_balance('${acc}')::bigint balance`)
+    ).rows[0] as { balance: number };
+    const payload = {
+      id: obj,
+      version: 1,
+      amount: 110000,
+      occurred_on: "2026-11-10",
+      salary_month: "2026-10",
+      account_id: acc,
+    };
+    await expect(command(a, "income_edit", payload)).rejects.toThrow(
+      /conflict/,
+    );
+    const key = crypto.randomUUID();
+    await command(b, "income_edit", payload, key);
+    await command(b, "income_edit", payload, key);
+    expect(
+      (
+        await db.query(
+          `select amount,salary_month from public.entries where id='${obj}'`,
+        )
+      ).rows,
+    ).toEqual([{ amount: 110000, salary_month: "2026-10" }]);
+    expect(
+      (
+        await db.query(
+          `select private.account_balance('${acc}')::bigint balance`,
+        )
+      ).rows,
+    ).toEqual([{ balance: before.balance + 10000 }]);
+  });
+  it("empréstimo parcial preserva datas desconhecidas e somente a última parcela explicitamente paga", async () => {
+    const obj = crypto.randomUUID();
+    const payload = {
+      id: obj,
+      description: "Calendário incompleto",
+      first_due: null,
+      next_due: "2026-11-20",
+      next_number: 9,
+      count: 10,
+      amount: 20000,
+      last_paid: 8,
+      last_paid_on: "2026-10-20",
+      history_confirmed: false,
+      last_paid_known: true,
+      kind: "loan",
+    };
+    await command(b, "plan", payload);
+    const rows = (
+      await db.query(
+        `select due_on,confirmed,unknown from public.obligations where plan_id='${obj}' order by number`,
+      )
+    ).rows as { due_on: Date | null; confirmed: number; unknown: boolean }[];
+    expect(rows).toHaveLength(10);
+    expect(rows.slice(0, 8).every((o) => o.due_on === null)).toBe(true);
+    expect(rows.slice(0, 7).every((o) => o.unknown && o.confirmed === 0)).toBe(
+      true,
+    );
+    expect(rows[7].confirmed).toBe(20000);
+    expect(rows[8].due_on?.toISOString().slice(0, 10)).toBe("2026-11-20");
+    expect(
+      (
+        await db.query(
+          `select * from public.payments where obligation_id like '${obj}:%'`,
+        )
+      ).rows,
+    ).toHaveLength(0);
+    await expect(
+      command(b, "plan", {
+        ...payload,
+        id: crypto.randomUUID(),
+        next_number: null,
+      }),
+    ).rejects.toThrow();
+  });
+  it("salário não pode ser lançado como recarga de VA/VR", async () => {
+    const wallet = crypto.randomUUID();
+    await command(b, "account", {
+      id: wallet,
+      name: "VA fictício",
+      kind: "VA",
+      opening: 0,
+      cutoff: "2026-11-01",
+    });
+    await expect(
+      command(b, "entry", {
+        id: crypto.randomUUID(),
+        description: "Salário indevido",
+        kind: "income",
+        amount: 10000,
+        occurred_on: "2026-11-10",
+        category: "Salário",
+        house: false,
+        consumer_id: b,
+        splits: [{ account_id: wallet, amount: 10000 }],
+      }),
+    ).rejects.toThrow(/Cash income/);
   });
 });

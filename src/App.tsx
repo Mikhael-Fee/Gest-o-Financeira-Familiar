@@ -1,12 +1,11 @@
+import Reports from "./components/Reports";
+import { Field, Metric, Empty, Badge } from "./components/ui";
 import {
-  cloneElement,
-  isValidElement,
   useEffect,
   useRef,
   useState,
   type FormEvent,
   type ReactNode,
-  type ReactElement,
 } from "react";
 import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import {
@@ -26,13 +25,10 @@ import {
   X,
 } from "lucide-react";
 import {
-  addMonths,
   balance,
   contribution,
-  conservativeSalary,
   divideSources,
   emptyState,
-  forecast,
   loanSummary,
   money,
   parseMoney,
@@ -89,43 +85,6 @@ function friendlyError(e: unknown) {
   return e instanceof Error
     ? e.message
     : "Não foi possível concluir. Tente novamente.";
-}
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      {isValidElement(children)
-        ? cloneElement(children as ReactElement<Record<string, unknown>>, {
-            "aria-label": label,
-          })
-        : children}
-    </label>
-  );
-}
-function Metric({
-  label,
-  value,
-  hint,
-  positive = false,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  positive?: boolean;
-}) {
-  return (
-    <article className="metric">
-      <span>{label}</span>
-      <strong className={positive ? "positive" : ""}>{value}</strong>
-      <small>{hint}</small>
-    </article>
-  );
-}
-function Empty({ children }: { children: ReactNode }) {
-  return <p className="empty">{children}</p>;
-}
-function Badge({ children }: { children: ReactNode }) {
-  return <span className="badge">{children}</span>;
 }
 function Auth({
   onDemo,
@@ -295,7 +254,9 @@ export default function App() {
     [search, setSearch] = useState(""),
     [menu, setMenu] = useState(false),
     [online, setOnline] = useState(navigator.onLine),
-    [invite, setInvite] = useState("");
+    [invite, setInvite] = useState(""),
+    [loanPartial, setLoanPartial] = useState(false),
+    [lastPaidUnknown, setLastPaidUnknown] = useState(false);
   const repository = useRef<DemoRepository | RemoteRepository>(
     new RemoteRepository(),
   );
@@ -317,6 +278,8 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (form) {
+      setLoanPartial(false);
+      setLastPaidUnknown(false);
       draft.current = id();
       requestKey.current = id();
       partIds.current = [id(), id()];
@@ -347,8 +310,12 @@ export default function App() {
     navigate("/");
     await load();
   }
-  async function execute(type: Command["type"], payload: Command["payload"]) {
-    if (lock.current || !user) return;
+  async function execute(
+    type: Command["type"],
+    payload: Command["payload"],
+    key?: string,
+  ) {
+    if (lock.current || !user) return false;
     lock.current = true;
     setBusy(true);
     setError("");
@@ -356,14 +323,16 @@ export default function App() {
       if (!online && !demo)
         throw Error("Você está sem conexão. Reconecte para salvar.");
       await repository.current.execute(
-        { key: form ? requestKey.current : id(), type, payload },
+        { key: key ?? (form ? requestKey.current : id()), type, payload },
         user,
       );
       await load();
       setForm("");
       setNotice("Salvo com segurança.");
+      return true;
     } catch (e) {
       setError(friendlyError(e));
+      return false;
     } finally {
       lock.current = false;
       setBusy(false);
@@ -412,7 +381,7 @@ export default function App() {
   const obligations = state.obligations
     .filter((o) => (personal ? o.owner_id === user.id : o.house))
     .filter((o) => remaining(o, state.payments) > 0)
-    .sort((a, b) => a.due_on.localeCompare(b.due_on));
+    .sort((a, b) => (a.due_on ?? "0000").localeCompare(b.due_on ?? "0000"));
   const entries = state.entries
     .filter(
       (e) =>
@@ -489,9 +458,11 @@ export default function App() {
         obligations.slice(0, limit).map((o) => (
           <div className="entry-row" key={o.id}>
             <span className="date-tile">
-              <b>{o.due_on.slice(8)}</b>
+              <b>{o.due_on?.slice(8) ?? "?"}</b>
               <small>
-                {o.due_on.slice(5, 7)}/{o.due_on.slice(0, 4)}
+                {o.due_on
+                  ? `${o.due_on.slice(5, 7)}/${o.due_on.slice(0, 4)}`
+                  : "a conferir"}
               </small>
             </span>
             <div className="entry-info">
@@ -563,12 +534,15 @@ export default function App() {
         await execute("plan", {
           id: draft.current,
           description: str("description"),
-          first_due: str("date"),
+          first_due: loanPartial ? null : str("date"),
+          next_due: loanPartial ? str("next_due") : null,
+          next_number: loanPartial ? num("next_number") : null,
+          last_paid_known: !lastPaidUnknown,
           count: num("count"),
           amount: parseMoney(str("amount")),
-          last_paid: num("last_paid"),
-          last_paid_on: str("paid_on") || null,
-          history_confirmed: f.get("history") === "on",
+          last_paid: lastPaidUnknown ? 0 : num("last_paid"),
+          last_paid_on: lastPaidUnknown ? null : str("paid_on") || null,
+          history_confirmed: !lastPaidUnknown && f.get("history") === "on",
           payoff: null,
           kind: "loan",
         });
@@ -642,9 +616,18 @@ export default function App() {
           version: cat?.version ?? 0,
         });
       } else if (form === "salary")
-        await execute("salary", {
-          base: parseMoney(str("amount")),
-          payday: num("payday"),
+        await execute("income_month", {
+          month,
+          expected: parseMoney(str("amount")),
+          future: true,
+          version:
+            state.income_months.find(
+              (x) => x.owner_id === user!.id && x.month === month,
+            )?.version ?? 0,
+          reference_version:
+            state.income_references.find(
+              (x) => x.owner_id === user!.id && x.effective_month === month,
+            )?.version ?? 0,
         });
       else if (form.startsWith("reverse_payment:"))
         await execute("reverse_payment", {
@@ -710,6 +693,7 @@ export default function App() {
             .filter(Boolean),
           beneficiary_id: str("beneficiary") || null,
           loan_id: str("loan_id") || null,
+          salary_month: form === "income" ? str("salary_month") : null,
           income_type: form === "income" ? str("income_type") : null,
           category:
             form === "expense"
@@ -1326,7 +1310,9 @@ export default function App() {
                                 <strong>{p.description}</strong>
                                 <small>
                                   {p.count} × {money(p.amount)} · Primeiro
-                                  vencimento: {p.first_due}
+                                  vencimento:{" "}
+                                  {p.first_due ??
+                                    "desconhecido · calendário parcial"}
                                 </small>
                               </span>
                               <ChevronRight size={18} />
@@ -1353,9 +1339,11 @@ export default function App() {
                               .
                             </p>
                             <p>
-                              Último vencimento contratual:{" "}
-                              {addMonths(p.first_due, p.count - 1)}. Soma em
-                              aberto:{" "}
+                              {p.first_due
+                                ? "Último vencimento contratual: "
+                                : "Último vencimento projetado (calendário parcial): "}
+                              {loanSummary(p, state).lastDue ?? "A conferir"}.
+                              Soma em aberto:{" "}
                               {money(
                                 state.obligations
                                   .filter((o) => o.plan_id === p.id)
@@ -1380,7 +1368,9 @@ export default function App() {
                                     <b>
                                       {o.number}/{p.count}
                                     </b>
-                                    <span>{o.due_on}</span>
+                                    <span>
+                                      {o.due_on ?? "Vencimento desconhecido"}
+                                    </span>
                                     <strong>
                                       {money(remaining(o, state.payments))}
                                     </strong>
@@ -1418,7 +1408,8 @@ export default function App() {
                           .map((o) => (
                             <div className="entry-row" key={o.id}>
                               <span className="entry-info">
-                                {o.description} · {o.due_on}
+                                {o.description} ·{" "}
+                                {o.due_on ?? "Data a conferir"}
                               </span>
                               <button
                                 className="text-button"
@@ -1486,7 +1477,23 @@ export default function App() {
                   </>
                 }
               />
-              <Route path="/relatorios" element={<Reports />} />
+              <Route
+                path="/relatorios"
+                element={
+                  <Reports
+                    state={state}
+                    ownerId={user.id}
+                    month={month}
+                    busy={busy}
+                    entries={entries}
+                    obligations={obligations}
+                    t={t}
+                    heading={heading}
+                    onCommand={execute}
+                    onAddReceipt={() => setForm("income")}
+                  />
+                }
+              />
               <Route
                 path="/configuracoes"
                 element={
@@ -1792,33 +1799,35 @@ export default function App() {
             )}
             {!["goal", "card", "permission", "salary", "category"].includes(
               formType,
-            ) && (
-              <Field
-                label={
-                  formType === "loan"
-                    ? "Data do PRIMEIRO vencimento"
-                    : formType === "replace"
-                      ? "Data do primeiro novo vencimento"
-                      : formType === "account"
-                        ? "Data de corte do saldo"
-                        : "Data efetiva da operação"
-                }
-              >
-                <input
-                  name="date"
-                  type="date"
-                  required
-                  defaultValue={today()}
-                  max={
-                    ["loan", "recurrence", "replace", "adjust_due"].includes(
-                      formType,
-                    )
-                      ? undefined
-                      : today()
+            ) &&
+              !(formType === "loan" && loanPartial) && (
+                <Field
+                  key="effective-date"
+                  label={
+                    formType === "loan"
+                      ? "Data do PRIMEIRO vencimento"
+                      : formType === "replace"
+                        ? "Data do primeiro novo vencimento"
+                        : formType === "account"
+                          ? "Data de corte do saldo"
+                          : "Data efetiva da operação"
                   }
-                />
-              </Field>
-            )}
+                >
+                  <input
+                    name="date"
+                    type="date"
+                    required
+                    defaultValue={formType === "loan" ? undefined : today()}
+                    max={
+                      ["loan", "recurrence", "replace", "adjust_due"].includes(
+                        formType,
+                      )
+                        ? undefined
+                        : today()
+                    }
+                  />
+                </Field>
+              )}
             {["account", "card"].includes(formType) && (
               <Field label="Instituição">
                 <select name="institution">
@@ -1882,9 +1891,19 @@ export default function App() {
               <Field label="Conta de origem / destino">
                 <select name="account" required>
                   {accounts
-                    .filter(
-                      (a) =>
-                        formType !== "benefit" || ["VA", "VR"].includes(a.kind),
+                    .filter((a) =>
+                      formType === "benefit"
+                        ? ["VA", "VR"].includes(a.kind)
+                        : [
+                              "income",
+                              "loan_received",
+                              "pay",
+                              "send",
+                              "confirm",
+                              "transfer",
+                            ].includes(formType)
+                          ? ["bank", "cash"].includes(a.kind)
+                          : true,
                     )
                     .map((a) => (
                       <option key={a.id} value={a.id}>
@@ -2019,6 +2038,43 @@ export default function App() {
             )}
             {formType === "loan" && (
               <>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={loanPartial}
+                    onChange={(e) => setLoanPartial(e.target.checked)}
+                  />{" "}
+                  Não sei a data do primeiro vencimento
+                </label>
+                {loanPartial && (
+                  <>
+                    <p className="muted">
+                      Informe uma parcela cujo vencimento você conhece. As
+                      anteriores ficam sem data confirmada; não serão inventados
+                      vencimentos.
+                    </p>
+                    <Field label="Número da parcela com vencimento conhecido">
+                      <input
+                        name="next_number"
+                        type="number"
+                        min={1}
+                        max={600}
+                        required
+                      />
+                    </Field>
+                    <Field label="Vencimento conhecido dessa parcela">
+                      <input name="next_due" type="date" required />
+                    </Field>
+                  </>
+                )}
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={lastPaidUnknown}
+                    onChange={(e) => setLastPaidUnknown(e.target.checked)}
+                  />{" "}
+                  Não sei qual foi a última parcela paga
+                </label>
                 <Field label="Quantidade TOTAL de parcelas">
                   <input
                     name="count"
@@ -2032,6 +2088,7 @@ export default function App() {
                 <Field label="Número da última parcela realmente paga (0 se nenhuma)">
                   <input
                     name="last_paid"
+                    disabled={lastPaidUnknown}
                     type="number"
                     min={0}
                     max={600}
@@ -2040,11 +2097,20 @@ export default function App() {
                   />
                 </Field>
                 <Field label="Data efetiva desse pagamento (obrigatória se informou parcela paga)">
-                  <input name="paid_on" type="date" max={today()} />
+                  <input
+                    name="paid_on"
+                    type="date"
+                    max={today()}
+                    disabled={lastPaidUnknown}
+                  />
                 </Field>
                 <label className="checkbox">
-                  <input type="checkbox" name="history" /> Conferi e confirmo
-                  TODAS as parcelas anteriores à última paga
+                  <input
+                    type="checkbox"
+                    name="history"
+                    disabled={lastPaidUnknown}
+                  />{" "}
+                  Conferi e confirmo TODAS as parcelas anteriores à última paga
                 </label>
                 <p className="muted">
                   Sem essa confirmação, o histórico fica a conferir. Não serão
@@ -2096,6 +2162,16 @@ export default function App() {
               </>
             )}
             {formType === "income" && (
+              <Field label="Mês salarial / competência">
+                <input
+                  type="month"
+                  name="salary_month"
+                  required
+                  defaultValue={month}
+                />
+              </Field>
+            )}
+            {formType === "income" && (
               <Field label="Tipo de receita">
                 <select name="income_type">
                   <option value="salary">Salário efetivamente recebido</option>
@@ -2104,23 +2180,11 @@ export default function App() {
               </Field>
             )}
             {formType === "salary" && (
-              <>
-                <Field label="Dia provável do recebimento">
-                  <input
-                    type="number"
-                    name="payday"
-                    min={1}
-                    max={31}
-                    required
-                    defaultValue={5}
-                  />
-                </Field>
-                <p className="muted">
-                  Esta referência é uma previsão. Não cria entrada em conta;
-                  salário recebido substitui a previsão do mês e extras ficam
-                  separados.
-                </p>
-              </>
+              <p className="muted">
+                Esta referência vale a partir de {month}. O histórico anterior e
+                os ajustes específicos de outros meses são preservados. Não cria
+                entrada em conta.
+              </p>
             )}
             {formType === "permission" && (
               <>
@@ -2369,185 +2433,6 @@ export default function App() {
           </Empty>
         )}
       </section>
-    );
-  }
-  function Reports() {
-    const [base, setBase] = useState(
-      String(
-        (state.income_settings.find((x) => x.owner_id === user!.id)?.base ??
-          0) / 100,
-      ),
-    );
-    const [scenario, setScenario] = useState("manual");
-    let salary = 0;
-    try {
-      salary = parseMoney(base);
-    } catch {
-      /* Preview remains zero while editing. */
-    }
-    const reference =
-      state.income_settings.find((x) => x.owner_id === user!.id)?.base ?? 0;
-    if (scenario === "base") salary = reference;
-    if (scenario === "history") {
-      const monthly = new Map<string, number>();
-      state.entries
-        .filter(
-          (e) =>
-            e.owner_id === user!.id &&
-            e.kind === "income" &&
-            e.income_type !== "extra" &&
-            !e.voided,
-        )
-        .forEach((e) =>
-          monthly.set(
-            e.occurred_on.slice(0, 7),
-            (monthly.get(e.occurred_on.slice(0, 7)) ?? 0) + e.amount,
-          ),
-        );
-      salary = conservativeSalary(
-        [...monthly.entries()]
-          .sort((a, b) => a[0].localeCompare(b[0]))
-          .map(([, amount]) => amount),
-        reference,
-      );
-    }
-    const rows = forecast(
-      {
-        ...state,
-        obligations: state.obligations.filter((o) => o.owner_id === user!.id),
-        entries: state.entries.filter((e) => e.owner_id === user!.id),
-      },
-      month,
-      salary,
-    );
-    return (
-      <>
-        <div className="metrics compact">
-          {[30, 60, 90].map((days) => {
-            const end = new Date(`${today()}T12:00:00Z`);
-            end.setUTCDate(end.getUTCDate() + days);
-            const through = end.toISOString().slice(0, 10);
-            const due = state.obligations
-              .filter((o) => o.owner_id === user!.id && o.due_on <= through)
-              .reduce((n, o) => n + remaining(o, state.payments), 0);
-            return (
-              <Metric
-                key={days}
-                label={`Compromissos em até ${days} dias`}
-                value={money(due)}
-                hint="Inclui vencidos e histórico a conferir · não é saldo bancário"
-              />
-            );
-          })}
-        </div>
-        <section className="panel">
-          {heading(
-            "Consumo por categoria",
-            "Pagamentos de fatura e empréstimos não duplicam as compras.",
-          )}
-          <div className="category-bars">
-            {[
-              ...new Set([
-                ...categories,
-                ...state.entries.map((e) => e.category),
-              ]),
-            ]
-              .map((c) => ({
-                category: c,
-                amount: entries
-                  .filter((e) => e.kind === "expense" && e.category === c)
-                  .reduce((n, e) => n + e.amount, 0),
-              }))
-              .filter((c) => c.amount)
-              .map((c) => (
-                <div key={c.category}>
-                  <span>{c.category}</span>
-                  <progress
-                    aria-label={c.category}
-                    value={c.amount}
-                    max={t.consumption || 1}
-                  />
-                  <b>{money(c.amount)}</b>
-                </div>
-              ))}
-          </div>
-        </section>
-        <section className="panel">
-          {heading(
-            "Planejamento de 12 meses",
-            "Simulação manual. Não representa renda ou saldo bancário confirmado.",
-          )}
-          <Field label="Cenário de renda">
-            <select
-              value={scenario}
-              onChange={(e) => setScenario(e.target.value)}
-            >
-              <option value="manual">Simulação manual</option>
-              <option value="base">Referência conservadora cadastrada</option>
-              <option value="history">
-                Histórico de salários · mediana conservadora de até 6 meses
-              </option>
-            </select>
-          </Field>
-          <p className="muted">
-            Histórico precisa de ao menos 3 meses; abaixo disso usa a referência
-            cadastrada, sem tratar extras como salário.
-          </p>
-          <Field label="Salário líquido mensal previsto (R$)">
-            <input
-              inputMode="decimal"
-              value={base}
-              onChange={(e) => setBase(e.target.value)}
-            />
-          </Field>
-          <div className="table-scroll">
-            <table>
-              <caption>
-                Renda e obrigações pessoais · pendências antigas são mostradas
-                separadamente
-              </caption>
-              <thead>
-                <tr>
-                  <th>Mês</th>
-                  <th>Renda</th>
-                  <th>Obrigações</th>
-                  <th>Diferença</th>
-                  <th>Origem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.month}>
-                    <th>{r.month}</th>
-                    <td>{money(r.income)}</td>
-                    <td>{money(r.due)}</td>
-                    <td>{money(r.free)}</td>
-                    <td>
-                      {r.estimated
-                        ? scenario === "history"
-                          ? "Histórico / referência"
-                          : scenario === "base"
-                            ? "Referência cadastrada"
-                            : "Estimativa manual"
-                        : "Recebido"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p>
-            Pendências anteriores ao período:{" "}
-            {money(
-              obligations
-                .filter((o) => o.due_on < `${month}-01`)
-                .reduce((n, o) => n + remaining(o, state.payments), 0),
-            )}
-            . Devem ser somadas à necessidade de caixa; não foram recriadas no
-            mês.
-          </p>
-        </section>
-      </>
     );
   }
 }

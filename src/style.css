@@ -1272,3 +1272,17 @@ details .entry-row {
     font-size: 10px;
   }
 }
+.salary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.salary-panel form {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  max-width: 580px;
+}
+.salary-panel form h3 {
+  margin-bottom: 20px;
+}

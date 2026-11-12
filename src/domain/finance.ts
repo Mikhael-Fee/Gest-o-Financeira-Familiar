@@ -75,6 +75,7 @@ export type Entry = {
   voided: boolean;
   installments?: number;
   income_type?: string;
+  salary_month?: string | null;
   loan_id?: string | null;
   tags?: string[];
   beneficiary_id?: string | null;
@@ -95,7 +96,7 @@ export type Obligation = {
   family_id: string;
   description: string;
   amount: number;
-  due_on: string;
+  due_on: string | null;
   house: boolean;
   confirmed: number;
   unknown: boolean;
@@ -110,7 +111,10 @@ export type Plan = {
   id: string;
   owner_id: string;
   description: string;
-  first_due: string;
+  first_due: string | null;
+  next_due?: string | null;
+  next_number?: number | null;
+  last_paid_known?: boolean;
   count: number;
   amount: number;
   last_paid: number;
@@ -131,6 +135,18 @@ export type Settlement = {
   version: number;
 };
 export type State = {
+  income_months: {
+    owner_id: string;
+    month: string;
+    expected: number;
+    version: number;
+  }[];
+  income_references: {
+    owner_id: string;
+    effective_month: string;
+    base: number;
+    version: number;
+  }[];
   categories: {
     id: string;
     owner_id: string;
@@ -189,6 +205,8 @@ export type State = {
   goals: { owner_id: string; month: string; amount: number }[];
 };
 export const emptyState = (): State => ({
+  income_months: [],
+  income_references: [],
   categories: [],
   income_settings: [],
   profiles: [],
@@ -205,7 +223,16 @@ export const emptyState = (): State => ({
   goals: [],
 });
 export function schedule(plan: Plan, family_id: string): Obligation[] {
-  date.parse(plan.first_due);
+  if (plan.first_due) date.parse(plan.first_due);
+  else {
+    date.parse(plan.next_due);
+    z.number().int().min(1).max(plan.count).parse(plan.next_number);
+  }
+  if (
+    plan.last_paid_known === false &&
+    (plan.last_paid !== 0 || plan.last_paid_on || plan.history_confirmed)
+  )
+    throw Error("Não confirme parcelas quando o histórico é desconhecido.");
   cents.parse(plan.amount);
   z.number().int().min(1).max(600).parse(plan.count);
   z.number().int().min(0).max(plan.count).parse(plan.last_paid);
@@ -217,14 +244,20 @@ export function schedule(plan: Plan, family_id: string): Obligation[] {
     family_id,
     description: `${plan.description} · ${i + 1}/${plan.count}`,
     amount: plan.amount,
-    due_on: addMonths(plan.first_due, i),
+    due_on: plan.first_due
+      ? addMonths(plan.first_due, i)
+      : i + 1 >= (plan.next_number ?? 1)
+        ? addMonths(plan.next_due!, i + 1 - plan.next_number!)
+        : null,
     house: false,
     confirmed:
       i + 1 === plan.last_paid ||
       (plan.history_confirmed && i + 1 <= plan.last_paid)
         ? plan.amount
         : 0,
-    unknown: i + 1 < plan.last_paid && !plan.history_confirmed,
+    unknown:
+      (!plan.first_due && i + 1 < plan.next_number!) ||
+      (i + 1 < plan.last_paid && !plan.history_confirmed),
     plan_id: plan.id,
     number: i + 1,
     card_id: null,
@@ -252,8 +285,12 @@ export function status(
   if (o.replaced_by) return "Renegociada";
   const left = remaining(o, payments);
   if (!left) return "Paga";
-  if (o.unknown) return "Histórico a conferir";
+  if (o.unknown)
+    return o.due_on
+      ? "Histórico a conferir"
+      : "Histórico a conferir · vencimento desconhecido";
   if (left < o.amount) return "Parcialmente paga";
+  if (!o.due_on) return "Vencimento desconhecido · a conferir";
   return o.due_on < now ? "Vencida · sem confirmação" : "A vencer";
 }
 export function statementDate(
@@ -298,6 +335,13 @@ export function validateEntry(e: Entry, accounts: Account[]): void {
     const account = accounts.find((a) => a.id === split.account_id);
     if (!account || account.owner_id !== e.owner_id)
       throw Error("Conta não autorizada.");
+    if (
+      ["income", "loan_received"].includes(e.kind) &&
+      !["bank", "cash"].includes(account.kind)
+    )
+      throw Error(
+        "Receita em dinheiro exige conta bancária ou dinheiro físico.",
+      );
     if (e.kind === "benefit" && !["VA", "VR"].includes(account.kind))
       throw Error("Recarga exige carteira VA/VR.");
     if (
@@ -361,7 +405,7 @@ export function totals(s: State, month: string, owner?: string, house = false) {
         (o) =>
           (!owner || o.owner_id === owner) &&
           (!house || o.house) &&
-          o.due_on <= `${month}-31`,
+          (!o.due_on || o.due_on <= `${month}-31`),
       )
       .reduce((n, o) => n + remaining(o, s.payments), 0),
   };
@@ -398,36 +442,81 @@ export function contribution(s: State, owner: string, month: string) {
     debt: 0,
   };
 }
-export function forecast(s: State, month: string, base: number, months = 12) {
+export function incomeForMonth(
+  s: State,
+  owner: string,
+  month: string,
+  base?: number,
+) {
+  const override = s.income_months.find(
+    (m) => m.owner_id === owner && m.month === month,
+  );
+  const reference = s.income_references
+    .filter((r) => r.owner_id === owner && r.effective_month <= month)
+    .sort((a, b) => b.effective_month.localeCompare(a.effective_month))[0];
+  const expected =
+    override?.expected ??
+    reference?.base ??
+    base ??
+    s.income_settings.find((x) => x.owner_id === owner)?.base ??
+    0;
+  const receipts = s.entries.filter(
+    (e) =>
+      e.owner_id === owner &&
+      e.kind === "income" &&
+      !e.voided &&
+      (e.salary_month ?? e.occurred_on.slice(0, 7)) === month,
+  );
+  const salaries = receipts.filter((e) => e.income_type !== "extra");
+  const received = salaries.reduce((n, e) => n + e.amount, 0),
+    extras = receipts
+      .filter((e) => e.income_type === "extra")
+      .reduce((n, e) => n + e.amount, 0);
+  return {
+    expected,
+    received,
+    extras,
+    estimated: salaries.length === 0,
+    income: (salaries.length ? received : expected) + extras,
+    receipts: salaries,
+  };
+}
+export function forecast(
+  s: State,
+  month: string,
+  base: number,
+  months = 12,
+  ownerId?: string,
+  respectSchedule = true,
+) {
   return Array.from({ length: months }, (_, i) => {
     const m = addMonths(`${month}-01`, i).slice(0, 7);
-    const actual = s.entries
-      .filter(
-        (e) =>
-          e.kind === "income" &&
-          e.income_type !== "extra" &&
-          !e.voided &&
-          e.occurred_on.startsWith(m),
-      )
-      .reduce((n, e) => n + e.amount, 0);
+    const possible = [
+      ...new Set([
+        ...s.income_settings.map((x) => x.owner_id),
+        ...s.income_months.map((x) => x.owner_id),
+        ...s.income_references.map((x) => x.owner_id),
+        ...s.entries.filter((e) => e.kind === "income").map((e) => e.owner_id),
+      ]),
+    ];
+    if (!ownerId && possible.length > 1)
+      throw Error("Informe a pessoa da previsão.");
+    const owner = ownerId ?? possible[0] ?? "";
+    const income = incomeForMonth(
+      respectSchedule ? s : { ...s, income_months: [], income_references: [] },
+      owner,
+      m,
+      base,
+    );
     const due = s.obligations
-      .filter((o) => o.due_on.startsWith(m))
+      .filter((o) => o.due_on?.startsWith(m))
       .reduce((n, o) => n + remaining(o, s.payments), 0);
-    const extras = s.entries
-      .filter(
-        (e) =>
-          e.kind === "income" &&
-          e.income_type === "extra" &&
-          !e.voided &&
-          e.occurred_on.startsWith(m),
-      )
-      .reduce((n, e) => n + e.amount, 0);
     return {
       month: m,
-      income: (actual || base) + extras,
-      estimated: !actual,
+      income: income.income,
+      estimated: income.estimated,
       due,
-      free: (actual || base) + extras - due,
+      free: income.income - due,
     };
   });
 }
@@ -459,11 +548,15 @@ export function loanSummary(plan: Plan, state: State) {
     .sort((a, b) => (b.number ?? 0) - (a.number ?? 0));
   const open = items
     .filter((o) => remaining(o, state.payments) > 0)
-    .sort((a, b) => a.due_on.localeCompare(b.due_on));
+    .sort((a, b) => (a.due_on ?? "0000").localeCompare(b.due_on ?? "0000"));
   return {
     highestPaid: paid[0]?.number ?? 0,
     earliestOpen: open[0],
-    lastDue: addMonths(plan.first_due, plan.count - 1),
+    lastDue: plan.first_due
+      ? addMonths(plan.first_due, plan.count - 1)
+      : plan.next_due && plan.next_number
+        ? addMonths(plan.next_due, plan.count - plan.next_number)
+        : null,
     futureSum: open.reduce((n, o) => n + remaining(o, state.payments), 0),
   };
 }

@@ -56,7 +56,9 @@ export type Command = {
     | "history"
     | "category"
     | "reject"
-    | "reverse_settlement";
+    | "reverse_settlement"
+    | "income_month"
+    | "income_edit";
   payload: Record<string, unknown>;
 };
 export type Identity = { id: string; family_id: string; name: string };
@@ -134,6 +136,76 @@ export function apply(s: State, c: Command, user: Identity): State {
       });
     }
   }
+  if (c.type === "income_month") {
+    const m = String(p.month);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw Error("Mês inválido.");
+    const old = n.income_months.find(
+      (x) => x.owner_id === user.id && x.month === m,
+    );
+    if ((old?.version ?? 0) !== p.version)
+      throw Error("Previsão alterada. Atualize os dados.");
+    const expected = cents.parse(p.expected);
+    if (old) {
+      old.expected = expected;
+      old.version++;
+    } else
+      n.income_months.push({
+        owner_id: user.id,
+        month: m,
+        expected,
+        version: 1,
+      });
+    if (p.future) {
+      if (!n.income_references.some((r) => r.owner_id === user.id))
+        n.income_references.push({
+          owner_id: user.id,
+          effective_month: "0001-01",
+          base:
+            n.income_settings.find((x) => x.owner_id === user.id)?.base ?? 0,
+          version: 1,
+        });
+      const ref = n.income_references.find(
+        (r) => r.owner_id === user.id && r.effective_month === m,
+      );
+      if ((ref?.version ?? 0) !== p.reference_version)
+        throw Error("Referência alterada.");
+      if (ref) {
+        ref.base = expected;
+        ref.version++;
+      } else
+        n.income_references.push({
+          owner_id: user.id,
+          effective_month: m,
+          base: expected,
+          version: 1,
+        });
+    }
+  }
+  if (c.type === "income_edit") {
+    const e = n.entries.find(
+      (e) =>
+        e.id === p.id &&
+        e.owner_id === user.id &&
+        e.kind === "income" &&
+        !e.voided,
+    );
+    const a = n.accounts.find(
+      (a) =>
+        a.id === p.account_id &&
+        a.owner_id === user.id &&
+        ["bank", "cash"].includes(a.kind),
+    );
+    if (!e || !a || e.version !== p.version || e.splits.length !== 1)
+      throw Error("Recebimento alterado ou não autorizado.");
+    const amount = cents.positive().parse(p.amount);
+    const occurred = date.parse(p.occurred_on);
+    if (occurred > today()) throw Error("Data futura.");
+    e.amount = amount;
+    e.occurred_on = occurred;
+    e.salary_month = String(p.salary_month);
+    e.splits = [{ account_id: a.id, amount }];
+    e.version++;
+  }
   if (c.type === "salary") {
     cents.parse(p.base);
     n.income_settings = n.income_settings.filter((x) => x.owner_id !== user.id);
@@ -199,6 +271,8 @@ export function apply(s: State, c: Command, user: Identity): State {
       )
     )
       throw Error("Cartão não autorizado.");
+    if (e.kind === "income")
+      e.salary_month = String(p.salary_month ?? e.occurred_on.slice(0, 7));
     n.entries.push(e);
     if (e.card_id) {
       const card = n.cards.find((c) => c.id === e.card_id)!;
@@ -280,7 +354,7 @@ export function apply(s: State, c: Command, user: Identity): State {
         description: o.description,
         kind: "expense",
         amount: o.amount,
-        occurred_on: o.due_on,
+        occurred_on: o.due_on ?? String(p.paid_on),
         category: "Contas da Casa",
         house: o.house,
         consumer_id: o.owner_id,
