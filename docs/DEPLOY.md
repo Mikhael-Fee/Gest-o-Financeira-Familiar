@@ -1,6 +1,6 @@
 # Supabase, desenvolvimento e publicação futura
 
-**Nenhum deploy em produção é parte dos scripts de instalação/CI.** As instruções remotas abaixo são para uma etapa futura autorizada pelo proprietário.
+**Nenhum deploy em produção é parte dos scripts de instalação/CI.** O proprietário autorizou homologação com dados fictícios. Produção e dados reais continuam exigindo autorização própria.
 
 ## Desenvolvimento sem credenciais
 
@@ -61,4 +61,12 @@ Neste ambiente, o BusyBox wget do healthcheck de Auth ignorou NO_PROXY. A valida
 
 O bundle `handler.generated.js` é ignorado pelo Git e gerado a partir de `server/identity.ts` com `npm run build:edge`. Ele evita downloads de dependências dentro da Edge Function; a instalação npm continua verificando TLS e integridade do lockfile. Gere o bundle antes de servir ou implantar a função.
 
-O helper opcional `scripts/cloud-start-local.sh` reproduz o início local com o tratamento do healthcheck neste cloud. Ele mantém o log da CLI em `.cache/supabase-start.private.log` (ignorado e privado), porque a CLI pode incluir chaves no resultado. Não publique esse log. Para a demonstração e os testes de domínio, Docker/Supabase não são necessários.
+O helper opcional `scripts/cloud-start-local.sh` reproduz o início local com o tratamento do healthcheck neste cloud. Mantém o estado da CLI em `SUPABASE_HOME` dentro de `.cache/`, com telemetria desabilitada, sem alterar `HOME`. Ele mantém o log da CLI em `.cache/supabase-start.private.log` (ignorado e privado), porque a CLI pode incluir chaves no resultado. Não publique esse log. Para a demonstração e os testes de domínio, Docker/Supabase não são necessários.
+
+## Homologação autorizada — estado em 12/11/2026
+
+Foi selecionado pelo proprietário o projeto existente e vazio na organização **Finanças casa**: `ovoqhnoaigjzihhpdukn`, região existente `us-east-1`, plano Free. A organização Grupo de Louvor está fora do escopo e não foi alterada. Não foi contratado plano ou adicional.
+
+As 11 migrations foram aplicadas transacionalmente, preservando versões, nomes e SQL no histórico `supabase_migrations.schema_migrations`. Não foi executado reset remoto. Todas as tabelas públicas têm RLS. Cadastro aberto e anônimo estão bloqueados, senha mínima de 12 caracteres e JWT de 900 segundos; a função `identity` está ativa com autorização própria. Origem e redirects ficam restritos a `https://entre-nos-homologacao.netlify.app`. O mesmo hostname controlado é o domínio das identidades técnicas; não é usado como serviço de e-mail.
+
+Site Netlify separado: `entre-nos-homologacao`, com a branch `feat/aplicativo-financas-familiares`. O frontend recebeu somente URL Supabase e chave publishable. O host reservado e o status de publicação devem ser distinguidos dos testes autenticados; consulte o relatório de homologação e `TEST_PLAN.md` para a validação efetivamente concluída. A `main` não foi mesclada nem configurada como produção.

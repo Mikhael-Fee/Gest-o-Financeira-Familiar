@@ -9,11 +9,12 @@ Dados exclusivamente fictícios. Resultados locais não constituem publicação,
 | `npm ci` a partir do lockfile | passou |
 | `npm run lint` | passou |
 | `npm run typecheck` (frontend, testes e servidor) | passou |
-| `npm test` | **64 testes passaram**, duas suítes |
+| `npm test` | **75 testes passaram**, três suítes |
 | `npm run build` | passou; frontend, cache versionado PWA e bundle da Edge Function |
-| Chromium via `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e` | **17 testes passaram**, desktop, mobile e PWA |
-| `npm run test:rls` em Supabase local | **15 testes pgTAP passaram**, rollback |
-| `npm run test:api` com Supabase local / Edge real | passou: bootstrap, login, convite, reuso negado, cadastro público negado, RLS HTTP, cartão, Pix, correção/rejeição, pagamento concorrente idempotente, snapshot e recuperação |
+| Chromium via `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e` | **21 testes passaram**, desktop, mobile e PWA |
+| `npm run test:rls` em Supabase local | **15 testes pgTAP passaram**, rollback, após aplicar as 11 migrations em banco local descartável |
+| RLS no Supabase remoto autorizado (Finanças casa) | **15 verificações pgTAP passaram**, em transação com rollback; confirmado que não ficaram usuários/famílias/lançamentos de teste |
+| `npm run test:api` com Supabase local / Edge real | passou: bootstrap, login, convite, reuso negado, cadastro público negado, RLS HTTP, cartão, Pix, correção/rejeição, pagamento concorrente idempotente, salário mensal/correção versionada, calendário parcial, snapshot e recuperação |
 | Backup + `node scripts/test-restore.mjs ARQUIVO_PRIVADO.dump` | passou: contagens financeiras, integridade Auth e **15 verificações RLS após restauração** |
 | `npm audit --omit=dev` | zero vulnerabilidades conhecidas reportadas naquele momento |
 
@@ -41,7 +42,7 @@ Também há testes de datas futuras recusadas, saldo atual sem movimentos futuro
 
 ## Navegador e acessibilidade
 
-Desktop e Pixel 7 emulados: navegação, saída, despesa VA+débito, empréstimo antigo, validação de formulário com preservação de campos, categoria própria e Pix confirmado sem quitar fatura. Teclado e largura da tela foram verificados. Axe verificou critérios automatizáveis WCAG A/AA nas telas testadas, sem violações remanescentes. Isso não substitui avaliação humana com leitor de tela e familiares.
+Desktop e Pixel 7 emulados: navegação, saída, despesa VA+débito, empréstimo antigo com calendário completo/parcial, salário mensal e correção sem duplicar receita, validação de formulário com preservação de campos, categoria própria e Pix confirmado sem quitar fatura. Teclado e largura da tela foram verificados. Axe verificou critérios automatizáveis WCAG A/AA nas telas testadas, sem violações remanescentes. Isso não substitui avaliação humana com leitor de tela e familiares.
 
 O projeto PWA usa build de produção: instala service worker, confere manifest/ícones, entra offline, recarrega o shell e verifica que caches não contêm URLs de Auth/PostgREST/Supabase. A causa da falha inicial foi `Vary: Origin` nos assets do servidor de preview; o cache de assets de mesmo domínio e hash ignora esse Vary, sem afetar respostas autenticadas.
 
@@ -67,5 +68,11 @@ No cloud, o navegador já instalado foi usado; o download inicial do Playwright 
 - Android/Samsung Internet/iOS em aparelhos reais, instalação nativa e leitores de tela com usuários reais.
 - Auth, domínio técnico controlado, CORS, limites e recuperação num projeto remoto do proprietário.
 - Restauração entre projetos/provedores distintos, plano de retenção criptografado e operação contínua.
-- Integração CI no GitHub executada remotamente; o workflow foi preparado, mas não houve push/deploy.
+- Testes autenticados na URL pública de homologação; o ambiente precisa permitir os hosts exatos de Supabase e Netlify.
 - Recursos ainda pendentes listados em `PRODUCT_SPEC.md`; uma suíte verde não representa conclusão desses recursos.
+
+## GitHub e regressões adicionais
+
+A branch `feat/aplicativo-financas-familiares` foi enviada preservando os commits originais. O PR permanece em rascunho, sem merge: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/pull/1 . CI remoto passou no commit `452e828`: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/43320253320 .
+
+A chamada direta de correção salarial sem versão reproduziu uma falha de concorrência. A validação SQL passou a recusar versão ausente/nula; a regressão e a correção foram verificadas em PostgreSQL/PGlite e na integração HTTP local. O ensaio de restauração também compara as novas tabelas de previsão e referência salarial.
