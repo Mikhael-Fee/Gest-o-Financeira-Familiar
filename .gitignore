@@ -1,0 +1,31 @@
+# Dependências e builds
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.cache/
+
+# Variáveis privadas
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+*.pfx
+secrets/
+
+# Temporários
+.DS_Store
+Thumbs.db
+*.log
+*.local
+.vscode/
+.idea/
+
+# Dados pessoais/exportações locais
+backups/
+exports/
+*.sqlite
+*.db
