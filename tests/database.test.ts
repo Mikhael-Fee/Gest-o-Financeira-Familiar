@@ -887,6 +887,12 @@ describe("PostgreSQL, RLS, GRANTs e comandos ACID", () => {
     await expect(command(a, "income_edit", payload)).rejects.toThrow(
       /conflict/,
     );
+    await expect(
+      command(b, "income_edit", { ...payload, version: undefined }),
+    ).rejects.toThrow(/conflict/);
+    await expect(
+      command(b, "income_edit", { ...payload, version: null }),
+    ).rejects.toThrow(/conflict/);
     const key = crypto.randomUUID();
     await command(b, "income_edit", payload, key);
     await command(b, "income_edit", payload, key);

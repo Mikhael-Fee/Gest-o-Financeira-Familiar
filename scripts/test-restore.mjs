@@ -86,6 +86,8 @@ try {
     "account_movements",
     "plans",
     "audit_logs",
+    "income_months",
+    "income_references",
   ];
   const parts = tables
     .map((t) => `'${t}',(select count(*) from public.${t})`)

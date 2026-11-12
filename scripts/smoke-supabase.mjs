@@ -298,11 +298,101 @@ try {
     },
   });
   check(!!future.error);
+  step = "salário mensal privado e correção versionada";
+  await execute(b, "income_month", {
+    month: "2026-11",
+    expected: 250000,
+    version: 0,
+    future: true,
+    reference_version: 0,
+  });
+  const salaryId = crypto.randomUUID();
+  await execute(b, "entry", {
+    id: salaryId,
+    description: "Salário exclusivamente fictício",
+    kind: "income",
+    income_type: "salary",
+    amount: 120000,
+    occurred_on: "2026-11-12",
+    salary_month: "2026-10",
+    category: "Salário",
+    house: false,
+    consumer_id: userB,
+    splits: [{ account_id: accountB, amount: 120000 }],
+  });
+  const correction = {
+    id: salaryId,
+    amount: 123000,
+    occurred_on: "2026-11-12",
+    salary_month: "2026-10",
+    account_id: accountB,
+  };
+  const missingVersion = await b.rpc("execute_command", {
+    command: {
+      key: crypto.randomUUID(),
+      type: "income_edit",
+      payload: correction,
+    },
+  });
+  check(!!missingVersion.error);
+  const correctionKey = crypto.randomUUID();
+  await execute(b, "income_edit", { ...correction, version: 1 }, correctionKey);
+  await execute(b, "income_edit", { ...correction, version: 1 }, correctionKey);
+  const salary = await b
+    .from("entries")
+    .select("amount,salary_month,version")
+    .eq("id", salaryId);
+  assert.deepEqual(salary.data, [
+    { amount: 123000, salary_month: "2026-10", version: 2 },
+  ]);
+  for (const table of ["income_months", "income_references"]) {
+    const hiddenSalary = await a.from(table).select("*").eq("owner_id", userB);
+    check(!hiddenSalary.error && hiddenSalary.data.length === 0);
+  }
+  step = "empréstimo com calendário parcial pela API";
+  const partialPlan = crypto.randomUUID();
+  await execute(b, "plan", {
+    id: partialPlan,
+    description: "Histórico fictício desconhecido",
+    first_due: null,
+    next_due: "2026-11-20",
+    next_number: 9,
+    count: 10,
+    amount: 20000,
+    last_paid: 0,
+    last_paid_on: null,
+    last_paid_known: false,
+    history_confirmed: false,
+    kind: "loan",
+  });
+  const partialItems = await b
+    .from("obligations")
+    .select("number,due_on,confirmed,unknown")
+    .eq("plan_id", partialPlan)
+    .order("number");
+  check(!partialItems.error && partialItems.data.length === 10);
+  check(
+    partialItems.data
+      .slice(0, 8)
+      .every(
+        (item) => item.due_on === null && item.unknown && item.confirmed === 0,
+      ),
+  );
+  assert.equal(partialItems.data[8].due_on, "2026-11-20");
+  assert.equal(partialItems.data[9].due_on, "2026-12-20");
+  const inventedPayments = await b
+    .from("payments")
+    .select("id")
+    .like("obligation_id", `${partialPlan}:%`);
+  check(!inventedPayments.error && inventedPayments.data.length === 0);
   step = "snapshot";
   const snapshot = await b.rpc("load_finances");
   check(
     !snapshot.error &&
-      snapshot.data.accounts.every((x) => x.owner_id === userB),
+      snapshot.data.accounts.every((x) => x.owner_id === userB) &&
+      snapshot.data.income_months.some(
+        (x) => x.owner_id === userB && x.expected === 250000,
+      ),
   );
   step = "recuperação";
   const reset = await authCall(
@@ -323,7 +413,7 @@ try {
   await a.auth.signOut();
   await b.auth.signOut();
   console.log(
-    "Integração local aprovada: bootstrap, login, convite, reuso negado, RLS via HTTP, cartão, Pix, pagamento idempotente, snapshot e recuperação. Dados exclusivamente fictícios.",
+    "Integração local aprovada: bootstrap, login, convite, reuso negado, RLS via HTTP, cartão, Pix, pagamento idempotente, salário mensal/correção, calendário parcial, snapshot e recuperação. Dados exclusivamente fictícios.",
   );
 } catch {
   console.error(

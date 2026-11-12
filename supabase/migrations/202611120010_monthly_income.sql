@@ -46,7 +46,7 @@ begin
    end if;
  elsif action='income_edit' then
    select * into receipt from public.entries where id=(p->>'id')::uuid and owner_id=actor and kind='income' and not voided for update;
-   if not found or receipt.version<>(p->>'version')::integer or jsonb_array_length(receipt.splits)<>1 then raise exception 'Receipt conflict';end if;
+   if not found or receipt.version is distinct from (p->>'version')::integer or jsonb_array_length(receipt.splits)<>1 then raise exception 'Receipt conflict';end if;
    if (p->>'occurred_on')::date>private.business_today() then raise exception 'Future effective date';end if;
    select * into acct from public.accounts where id=(p->>'account_id')::uuid and owner_id=actor and kind in ('bank','cash') for update;
    if not found then raise exception 'Invalid income account';end if;

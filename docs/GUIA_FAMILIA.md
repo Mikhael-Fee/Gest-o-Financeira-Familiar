@@ -11,6 +11,8 @@ A administração envia um código individual. Na tela inicial, escolha **Tenho 
 1. **Adicionar → Conta ou benefício**. Informe um apelido, instituição, tipo, saldo inicial e a data em que esse saldo foi conferido.
 2. Não sabe o saldo? Pode começar com zero e usar **Conferir saldo** depois, registrando justificativa. Os números são registros do usuário, não conexão automática com o banco.
 3. **Referência de salário** serve para planejar, sem criar dinheiro. Quando receber, use **Receita → Salário efetivamente recebido**. Extras/bônus têm classificação separada. Para registrar dinheiro recebido de empréstimo, cadastre antes o contrato e vincule o recebimento; isso não vira salário. Datas futuras são previsões, não confirmações de caixa.
+4. Em **Relatórios → Salário por mês**, ajuste a previsão apenas daquele mês ou marque a opção para usar também como referência dos próximos meses. O histórico e os ajustes de outros meses são preservados.
+5. Ao receber, informe o mês salarial/competência e a data em que entrou na conta. Se errou valor, conta ou data, use **Corrigir recebimento**: o sistema corrige o registro com auditoria, sem criar outro salário.
 
 ## Cadastrar um empréstimo antigo
 
@@ -22,6 +24,8 @@ Abra **Planejamento → Cadastrar empréstimo**:
 - Marque “Conferi e confirmo TODAS…” somente se verificou as parcelas anteriores. Sem isso, 1–7 ficam a conferir; apenas a oitava é confirmada.
 
 O calendário mantém 9/10 em 20/11 e 10/10 em 20/12. Se a oitava ficou em aberto e você pagou a nona, registre individualmente: a oitava continuará visível. Não será inventado débito bancário antigo. Use **Histórico** para confirmar pagamento anterior à data de corte, com data e justificativa; para pagamento atual, use **Pagar**.
+
+Não sabe o primeiro vencimento? Marque a opção correspondente e informe o **número da próxima parcela** e seu **vencimento conhecido**. As parcelas anteriores ficam sem data conhecida, para conferir; o aplicativo não inventa o início do contrato. Se também não souber qual foi a última paga, marque essa opção: nenhuma quitação será presumida.
 
 Em **Conferir / ajustar**, registre valor real de parcela variável, carência ou vencimento excepcional. Uma cotação de quitação deve vir do credor: ela não é a mesma coisa que somar todas as parcelas futuras.
 

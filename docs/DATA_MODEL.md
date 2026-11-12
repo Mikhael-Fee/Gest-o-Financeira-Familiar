@@ -16,6 +16,8 @@ Migrations ordenadas em `supabase/migrations/`. Tabelas públicas têm RLS habil
 | account_movements | transferências, acertos, conciliações e créditos de estorno; dono apenas |
 | recurrences | regras mensais e ocorrências determinísticas, sem duplicação |
 | income_settings | referência privada de salário e dia provável |
+| income_months | previsão privada por proprietário/mês, com versão |
+| income_references | referência privada com mês de vigência, preservando histórico |
 | goals | meta flexível pessoal por mês |
 | categories | categorias/subcategorias privadas, versão e desativação, sem apagar histórico |
 | audit_logs | antes/depois e ator em eventos críticos; append-only para navegador |
@@ -39,3 +41,5 @@ Mudanças financeiras são comandos, não `UPDATE` pelo cliente. Estorno/anulaç
 Não há objetos de Storage/anexos nesta versão. Portanto nenhuma política aberta de arquivos foi criada.
 
 Tags e beneficiário são metadados do lançamento, separados de categoria, consumidor e responsável. Envios rejeitados/confirmados/estornados preservam datas distintas no histórico de acertos.
+
+`entries.salary_month` separa competência salarial da data de recebimento. `plans.first_due` aceita ausência somente com âncora explícita `next_number`/`next_due`; `last_paid_known` distingue ausência de informação de nenhuma parcela paga. Obrigações de contrato podem ter `due_on` desconhecido, permanecendo visíveis sem serem atribuídas artificialmente a um mês.

@@ -4,6 +4,9 @@ set -euo pipefail
 umask 077
 cd "$(dirname "$0")/.."
 mkdir -p .cache
+# Keep CLI state writable in a restricted cloud without changing HOME.
+export SUPABASE_HOME="${SUPABASE_HOME:-$PWD/.cache/supabase-cli}"
+export SUPABASE_TELEMETRY_DISABLED=1
 npm run build:edge
 npx supabase start -x studio,imgproxy,realtime,storage-api,logflare,vector,supavisor > .cache/supabase-start.private.log 2>&1 &
 financas_setup_pid=$!

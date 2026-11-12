@@ -14,6 +14,8 @@ Datas usam `YYYY-MM-DD`. A âncora 31/01 gera 28/02 (29 em ano bissexto), 31/03 
 
 Informar “última paga: 8” confirma somente a oitava. Confirmar todas as anteriores exige uma declaração explícita. Na ausência dela, 1–7 continuam “Histórico a conferir”. Baixa individual permite pagar 9 deixando 8 em aberto. O painel mostra maior número quitado e próxima obrigação aberta separadamente.
 
+Se a primeira data for desconhecida, informar número e vencimento da próxima parcela cria datas somente a partir dessa âncora. Parcelas anteriores permanecem sem vencimento conhecido; não são atribuídas retroativamente a meses nem escondidas do passivo. Se a última paga também for desconhecida, nenhuma parcela recebe confirmação automática. Há lista separada de obrigações sem data para conferência.
+
 Pagamentos são positivos, não excedem o saldo em aberto e exigem conta autorizada. Conta precisa de saldo registrado suficiente; se divergir do banco, faça conciliação justificada. Histórico anterior ao corte tem confirmação própria, sem débitos de conta. Pagamentos podem ser estornados na data efetiva da correção; o original permanece auditável. Não se estorna uma alocação já incorporada em renegociação.
 
 ## Crédito
@@ -35,3 +37,9 @@ Meta flexível = referência, realizado, falta ou excedente; **não é dívida**
 Em compra pessoal/Casa, os meios de pagamento são repartidos proporcionalmente, com cálculo inteiro e resto explícito. A descrição compartilhada é separada para não revelar detalhes pessoais.
 
 Acordo de renegociação guarda data efetiva separada do primeiro novo vencimento; encargos confirmados são reconhecidos na data do acordo. Corrigir valor de conta recorrente já parcialmente paga corrige também o consumo vinculado, em uma transação e com antes/depois na auditoria.
+
+## Salário previsto e recebido
+
+A previsão é privada e admite ajuste para um mês específico. Alterar também a referência futura cria uma vigência a partir do mês escolhido, preservando a referência anterior e os ajustes de outros meses. Isso não cria receita, saldo nem confirmação de recebimento.
+
+Recebimentos têm competência salarial separada da data efetiva de caixa. O valor confirmado substitui a previsão daquela competência no planejamento; extras permanecem separados. Correção exige a versão atual, conta bancária/dinheiro própria e data efetiva não futura, atualiza o registro uma vez e preserva antes/depois na auditoria. Versão ausente, nula ou antiga é recusada. VA/VR não recebe salário nem crédito de empréstimo.
