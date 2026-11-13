@@ -121,13 +121,14 @@ function Auth({
         throw Error(
           "Não foi possível entrar. Verifique os dados ou a validade do convite.",
         );
-      const { error: sessionError } = await supabase.auth.setSession(
-        response.session,
-      );
-      if (sessionError) throw sessionError;
+      const { data: authenticated, error: sessionError } =
+        await supabase.auth.setSession(response.session);
+      if (sessionError || !authenticated.user)
+        throw sessionError ?? Error("Sessão indisponível.");
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("id,family_id,name")
+        .eq("id", authenticated.user.id)
         .single();
       if (profileError || !profile) throw Error("Perfil indisponível.");
       onLogin(profile);
@@ -1481,13 +1482,12 @@ export default function App() {
                 path="/relatorios"
                 element={
                   <Reports
+                    key={user.id + ":" + scope}
                     state={state}
                     ownerId={user.id}
                     month={month}
+                    scope={personal ? "personal" : "house"}
                     busy={busy}
-                    entries={entries}
-                    obligations={obligations}
-                    t={t}
                     heading={heading}
                     onCommand={execute}
                     onAddReceipt={() => setForm("income")}

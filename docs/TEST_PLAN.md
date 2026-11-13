@@ -9,9 +9,9 @@ Dados exclusivamente fictícios. Resultados locais não constituem publicação,
 | `npm ci` a partir do lockfile | passou |
 | `npm run lint` | passou |
 | `npm run typecheck` (frontend, testes e servidor) | passou |
-| `npm test` | **75 testes passaram**, três suítes |
+| `npm test` | **86 testes passaram**, quatro suítes |
 | `npm run build` | passou; frontend, cache versionado PWA e bundle da Edge Function |
-| Chromium via `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e` | **21 testes passaram**, desktop, mobile e PWA |
+| Chromium via `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e` | **35 testes passaram**, desktop, mobile, PWA e Auth com respostas sintéticas interceptadas |
 | `npm run test:rls` em Supabase local | **15 testes pgTAP passaram**, rollback, após aplicar as 11 migrations em banco local descartável |
 | RLS no Supabase remoto autorizado (Finanças casa) | **15 verificações pgTAP passaram**, em transação com rollback; confirmado que não ficaram usuários/famílias/lançamentos de teste |
 | `npm run test:api` com Supabase local / Edge real | passou: bootstrap, login, convite, reuso negado, cadastro público negado, RLS HTTP, cartão, Pix, correção/rejeição, pagamento concorrente idempotente, salário mensal/correção versionada, calendário parcial, snapshot e recuperação |
@@ -47,6 +47,14 @@ Desktop e Pixel 7 emulados: navegação, saída, despesa VA+débito, empréstimo
 O projeto PWA usa build de produção: instala service worker, confere manifest/ícones, entra offline, recarrega o shell e verifica que caches não contêm URLs de Auth/PostgREST/Supabase. A causa da falha inicial foi `Vary: Origin` nos assets do servidor de preview; o cache de assets de mesmo domínio e hash ignora esse Vary, sem afetar respostas autenticadas.
 
 Screenshots de teste foram geradas em `/tmp`, com dados fictícios. Não foram publicadas nem adicionadas ao Git. CI não envia traces ou exports para artifacts públicos.
+
+## Gráficos e regressão do login
+
+`tests/reports.test.ts` acrescenta 11 testes financeiros: atribuição do consumo ao consumidor do cartão, filtros proporcionais de compra dividida, soma de fontes, pagamento de fatura separado do consumo, VA/VR separado do caixa, datas efetivas/corte, empréstimos/acertos/estornos, fontes e metas privadas, dívidas renegociadas/sem data e mudança de ano. O cálculo não usa coordenadas ou arredondamento visual como dinheiro.
+
+Há 10 casos E2E adicionais para gráficos em desktop/mobile: interação por teclado, filtros e totais, comparação de 12 meses, tabela alternativa, estado vazio sem NaN/Infinity, isolamento da Casa, projeção negativa, entrada inválida, acessibilidade Axe, ausência de serviços gráficos externos e largura de tela. Screenshots foram revisadas; os rótulos de meses no celular foram encurtados e espaçados para evitar sobreposição.
+
+`tests/e2e/auth.spec.ts` usa um servidor Vite separado e intercepta todas as chamadas de um backend local sintético. Quatro casos (desktop/mobile) verificam login com vários membros, filtro do perfil pelo ID autenticado, carregamento dos gráficos pelo snapshot remoto, sessão em memória após recarga e falha de login sem fallback para demo. Isso encontrou/cobre a busca singular de perfis sem filtro, que falhava quando havia mais de um membro. São testes do frontend com mocks explícitos; não substituem a homologação Auth pública nem criam usuários reais.
 
 ## Repetir
 

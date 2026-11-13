@@ -17,7 +17,7 @@ O aplicativo **Entre Nós** usa React, TypeScript estrito, Vite, React Router, Z
 - Transporte de saldo e renegociação, encargos confirmados, cotação de quitação informada pelo credor, preservação da origem sem duplicar exigível.
 - Estorno de pagamento preservando original e gerando crédito de correção auditado.
 - Casa com metas flexíveis, contribuição por gasto efetivo e pagamento de obrigação compartilhada. Recargas de benefício não são contribuições.
-- Relatórios de consumo por categoria, obrigações em 30/60/90 dias, projeção de 12 meses, pendências antigas separadas e exportação JSON restrita por RLS.
+- Relatórios com seis gráficos interativos: evolução de consumo pessoal/Casa, categorias, meios de pagamento, entradas/saídas de dinheiro, contribuições e planejamento de 12 meses. Comparação de 6/12 meses, filtros por categoria, conta/cartão autorizado e consumidor na Casa, seleção por toque/teclado e tabelas alternativas recolhidas. Pendências antigas e sem data permanecem separadas; exportação JSON é restrita por RLS.
 
 ## Decisões de implementação
 
@@ -28,6 +28,10 @@ Compras parceladas reconhecem o consumo total contratado na data da compra, e di
 As funções SQL são a fronteira de escrita. A aplicação envia comandos com chave idempotente e versões, o banco valida permissões, trava registros e grava auditoria na mesma transação. O carregamento usa um único snapshot SQL com RLS, evitando mistura de tabelas de instantes diferentes e truncamento silencioso de listas.
 
 Sessões ficam em memória e renovam enquanto a aplicação está aberta. Recarregar exige entrar novamente; essa escolha conservadora evita manter tokens no armazenamento do celular compartilhado. Não há promessa de lançamento offline.
+
+Gráficos usam SVG nativo, responsivo e sem serviços externos ou novas dependências. Os seletores de relatório somam centavos inteiros; proporções e coordenadas são apenas apresentação. No filtro de fonte, uma compra dividida mostra somente o valor pago por aquela fonte. O gráfico de dinheiro usa data efetiva/corte da conta, inclui acertos e empréstimos como movimento, sem classificá-los como salário, e exclui aberturas, conciliações e transferências próprias.
+
+Na visão Casa, gráficos e projeções usam somente despesas/obrigações compartilhadas e contribuições. Não aparecem salários, caixa ou metas particulares de outros membros. Uma fonte de pagamento cujo tipo não está autorizado no snapshot é identificada como privada, sem inferir banco ou benefício. Classificar todas essas fontes familiares por VA/VR/dinheiro exigirá um resumo servidor específico que preserve a privacidade.
 
 ## Limites a avaliar antes de produção
 

@@ -22,6 +22,16 @@ export default defineConfig({
       url: "http://127.0.0.1:5174",
       reuseExistingServer: !process.env.CI,
     },
+    {
+      command: "npm run dev -- --port 5175 --strictPort",
+      url: "http://127.0.0.1:5175",
+      reuseExistingServer: false,
+      env: {
+        VITE_SUPABASE_URL: "http://127.0.0.1:54320",
+        VITE_SUPABASE_ANON_KEY:
+          "synthetic-public-key-for-intercepted-tests-only",
+      },
+    },
   ],
   projects: [
     {
@@ -31,13 +41,23 @@ export default defineConfig({
     },
     {
       name: "desktop",
-      testIgnore: "**/pwa.spec.ts",
+      testIgnore: ["**/pwa.spec.ts", "**/auth.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "mobile",
-      testIgnore: "**/pwa.spec.ts",
+      testIgnore: ["**/pwa.spec.ts", "**/auth.spec.ts"],
       use: { ...devices["Pixel 7"] },
+    },
+    {
+      name: "auth-desktop",
+      testMatch: "**/auth.spec.ts",
+      use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:5175" },
+    },
+    {
+      name: "auth-mobile",
+      testMatch: "**/auth.spec.ts",
+      use: { ...devices["Pixel 7"], baseURL: "http://127.0.0.1:5175" },
     },
   ],
 });

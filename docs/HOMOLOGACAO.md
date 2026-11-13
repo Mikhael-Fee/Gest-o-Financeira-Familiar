@@ -46,3 +46,11 @@ O ambiente de execução ainda está na revisão de rede anterior, que permite s
 Depois dessa liberação, falta criar o primeiro administrador fictício via Auth administrativo e bootstrap, emitir convites e testar login, recuperação, persistência, concorrência e privacidade diretamente na URL pública. **Esses testes autenticados públicos ainda não foram executados.** Os testes locais e o estado `ready` não os substituem. Ainda não há credencial de primeiro acesso a entregar.
 
 Também permanecem validação em aparelhos físicos, ensaio de restauração entre projetos/provedores, retenção externa criptografada e os recursos de produto explicitamente pendentes em `PRODUCT_SPEC.md`. Antes de produção, revisar essas pendências e obter autorização para dados reais e publicação definitiva. Tokens enviados por chat devem ser substituídos no campo seguro do ambiente; nenhum valor foi incluído no repositório.
+
+## Etapa seguinte: relatórios visuais
+
+Foram implementados seis gráficos interativos, com filtros, comparação mensal, fontes de pagamento, projeção e contribuições; consulte `PRODUCT_SPEC.md` e `GUIA_FAMILIA.md`. A visão Casa preserva dados particulares. O cenário histórico de renda agora usa a mediana na simulação sem ser sobrescrito pelas referências futuras; o cenário de referência continua respeitando ajustes por mês. As receitas confirmadas continuam substituindo a previsão.
+
+O login passou a selecionar o perfil pelo ID retornado pelo Auth, evitando erro de resultado singular em famílias com vários membros. Os testes de frontend desse fluxo usam respostas sintéticas interceptadas e não configuram o primeiro administrador remoto.
+
+A execução corrente passou em lint, tipos, build e 86 testes de domínio/banco. A suíte de navegador passou nos 35 casos, incluindo gráficos e Auth sintético. A rede pública foi consultada novamente nesta etapa: o proxy respondeu `Tunnel connection failed: 403 Forbidden` para os dois hosts. Assim, bootstrap e testes autenticados na URL pública continuam pendentes da aplicação do rascunho de rede. Nenhum projeto ou dado do Grupo de Louvor foi acessado nesta etapa e nenhuma migration nova foi necessária.

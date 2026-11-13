@@ -1286,3 +1286,232 @@ details .entry-row {
 .salary-panel form h3 {
   margin-bottom: 20px;
 }
+
+/* Reports: financial charts remain readable at phone widths. */
+.reports-page > .section-heading {
+  margin: 8px 0 24px;
+}
+.report-filters h3 {
+  margin: 0 0 10px;
+}
+.report-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px 18px;
+  margin-top: 20px;
+}
+.report-filter-grid .field {
+  margin-bottom: 0;
+}
+.report-filter-grid select {
+  text-overflow: ellipsis;
+}
+.report-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-bottom: 22px;
+}
+.report-chart-grid > .panel {
+  margin-bottom: 0;
+}
+.report-wide {
+  grid-column: 1 / -1;
+}
+.donut-figure,
+.column-figure {
+  margin: 0;
+  min-width: 0;
+}
+.donut-layout {
+  display: grid;
+  grid-template-columns: minmax(135px, 0.9fr) minmax(0, 1.2fr);
+  gap: 16px;
+  align-items: center;
+}
+.donut-svg {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 10px auto;
+}
+.donut-svg circle {
+  cursor: pointer;
+}
+.donut-label {
+  fill: #bdcad9;
+  font-size: 13px;
+}
+.donut-total {
+  fill: #e8edf3;
+  font:
+    700 22px Manrope,
+    sans-serif;
+}
+.chart-key {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.chart-key button {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px 8px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 12px;
+}
+.chart-key button:hover,
+.chart-key button[aria-pressed="true"] {
+  background: #22344a;
+  border-color: #7390b4;
+}
+.chart-key-name {
+  overflow-wrap: anywhere;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.chart-key-name small {
+  display: block;
+  font-size: 11px;
+}
+.chart-key strong {
+  white-space: nowrap;
+  font-size: 12px;
+}
+.chart-swatch {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  margin: 22px 0 10px;
+  color: #c3d0df;
+  font-size: 12px;
+}
+.chart-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.line-legend > svg {
+  width: 24px;
+  height: 16px;
+}
+.chart-canvas {
+  width: 100%;
+  min-width: 0;
+}
+.chart-canvas > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.chart-canvas .empty {
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+}
+.chart-axis {
+  fill: #bdcad9;
+  font:
+    12px "DM Sans",
+    sans-serif;
+}
+.chart-grid-line {
+  stroke: #34475b;
+  stroke-dasharray: 3 5;
+}
+.chart-zero-line {
+  stroke: #9aadc4;
+  stroke-width: 1.5;
+}
+.column-figure > .field {
+  max-width: 390px;
+  margin: 12px 0;
+}
+.chart-selection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  border: 1px solid #3d536e;
+  background: #19283a;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 18px 0 10px;
+  color: #c8d6e5;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.chart-selection > strong {
+  flex-basis: 100%;
+  color: #f0f4fa;
+}
+.chart-negative {
+  color: #ffb5b9;
+}
+.chart-table {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.chart-table summary {
+  color: #b5cdff;
+}
+.chart-table .table-scroll {
+  max-width: 100%;
+}
+.chart-table th,
+.chart-table td {
+  white-space: nowrap;
+}
+.report-warnings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 22px 0;
+}
+.report-warnings p {
+  background: #2a2732;
+  border: 1px solid #605267;
+  color: #e4d4e8;
+  border-radius: 9px;
+  padding: 16px;
+  font-size: 12px;
+}
+.report-forecast > .field {
+  max-width: 580px;
+}
+@media (max-width: 1350px) {
+  .donut-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 800px) {
+  .report-chart-grid,
+  .report-filter-grid,
+  .report-warnings {
+    grid-template-columns: 1fr;
+  }
+  .report-chart-grid {
+    gap: 18px;
+  }
+  .chart-legend {
+    gap: 10px 16px;
+  }
+  .chart-selection {
+    flex-direction: column;
+    gap: 6px;
+    padding: 13px;
+  }
+  .chart-selection > strong {
+    flex-basis: auto;
+  }
+}

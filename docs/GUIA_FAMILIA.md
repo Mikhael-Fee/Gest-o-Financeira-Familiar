@@ -52,4 +52,10 @@ Em **Casa**, ajuste sua meta mensal. Meta R$600, realizado R$400: faltam R$200 p
 
 ## Conferência e saída
 
+Em **Relatórios**, escolha **Meu espaço** ou **Casa** e o mês de referência. **Evolução do consumo** compara 6 ou 12 meses; os gráficos de rosca mostram categorias e meios de pagamento. Toque em uma legenda para destacar o valor. Nos gráficos de colunas, toque na coluna ou escolha o mês na lista para ver os valores exatos. Pelo teclado, use os mesmos botões e listas.
+
+Use **Categoria do consumo** e **Fonte do consumo** para investigar os gastos. Uma compra de R$400 com VA250 e banco150 aparece como R$150 quando você filtra só o banco. **Limpar filtros de consumo** volta ao total. Esses filtros não mudam os gráficos independentes de dinheiro, contribuição ou planejamento.
+
+**Entradas e saídas de dinheiro** acompanha movimentos reais nas suas contas, incluindo empréstimos/acertos, sem chamar tudo de salário. **Planejamento de 12 meses** compara renda e obrigações abertas; a linha tracejada mostra a diferença, que pode ficar negativa. Trocar cenário é uma simulação, sem movimentar dinheiro. Valores sem data e pendências antigas ficam abaixo, para conferir. Se quiser verificar os números em conjunto, abra **Ver dados em tabela** em cada gráfico.
+
 Confira mês, pendências antigas e mensagens “estimado/a conferir”. Para erro em baixa, use **Estornar** e explique o motivo; não registre renda extra para compensar. Exporte JSON somente em dispositivo privado. Use **Sair e limpar sessão** ao terminar, especialmente em celular compartilhado.
