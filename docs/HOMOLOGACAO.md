@@ -60,3 +60,15 @@ A execução corrente passou em lint, tipos, build e 86 testes de domínio/banco
 A versão com gráficos, commit `2e56b74599249dbf3e079bdcfe1f8348e4b0b089`, foi publicada em 12/11/2026 às 21:44 (Brasília), no deploy `6af65d30026a1d5ece5764a3`. A API Netlify confirmou `ready`, o deploy no endereço principal e 19 arquivos públicos, sem arquivos de ambiente/cache/servidor. Os builds automáticos foram novamente pausados após essa publicação manual autorizada. O endereço continua https://entre-nos-homologacao.netlify.app .
 
 O seletor de mês também preserva o último período válido quando o campo é limpo, evitando erro de renderização dos relatórios. Essa regressão e a revisão visual/acessível foram verificadas novamente em desktop e celular. O CI completo do commit de gráficos passou: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/43339278411 .
+
+## Revisão de Meu espaço e Casa — 13/11/2026
+
+A revisão corrigiu a mistura de indicadores pessoais sob o rótulo Casa, o contexto das rotas, a exposição visual de contratos privados na visão compartilhada e o recorte mensal do histórico de pagamentos. Meu espaço mantém seu painel privado; Casa preserva suas funcionalidades. Os gráficos continuam disponíveis, com consumo, obrigações e caixa separados. Consulte [a comparação completa e as pendências individuais](REVISAO_MEU_ESPACO_CASA.md).
+
+Lint, tipos, build, **89 testes de domínio/banco** e **45 casos Playwright** passaram. Foram repetidos os **15 testes RLS locais**, a integração local real de Auth/PostgREST/Edge e as **15 verificações RLS remotas com rollback**. Após a transação remota, continuaram zero usuários, perfis e lançamentos. Não foi repetido o ensaio de restauração nesta revisão, que não altera migrations. O CI completo de `c493a2330f236295ffe01b7d94b53554d3949fbf` passou: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/43413113205 .
+
+As correções foram publicadas **somente no site de homologação**, usando o código versionado de `c493a2330f236295ffe01b7d94b53554d3949fbf`. Deploy `6af6eebc4013bee8334579c0`, publicado em 13/11/2026 às 08:04 (Brasília): a API confirmou `ready`, o deploy no endereço principal e 19 arquivos públicos sem ambiente/cache/servidor. Os builds automáticos foram novamente pausados. Não houve merge na `main`, alteração de plano ou dados reais.
+
+**A homologação autenticada pública continua bloqueada.** O runtime observado permanece na revisão 4, permitindo as três APIs de gerenciamento, enquanto os dois hosts públicos constam apenas no rascunho. As ferramentas disponíveis salvam propostas; a aplicação dessa configuração precisa ocorrer no painel do ambiente. A configuração já autorizada não está aplicada e novas conexões foram negadas pelo proxy com `403 Forbidden`. Portanto, não foi criado o administrador remoto e os testes públicos de login/convites/privacidade não foram executados.
+
+Orçamentos pessoais por categoria, metas de economia/reserva, disponível estimado e nova previsão histórica que reconheça aumentos permanecem pendentes, respeitando a ordem solicitada: concluir primeiro o bootstrap e a homologação autenticada na URL pública.

@@ -33,7 +33,11 @@ Gráficos usam SVG nativo, responsivo e sem serviços externos ou novas dependê
 
 Na visão Casa, gráficos e projeções usam somente despesas/obrigações compartilhadas e contribuições. Não aparecem salários, caixa ou metas particulares de outros membros. Uma fonte de pagamento cujo tipo não está autorizado no snapshot é identificada como privada, sem inferir banco ou benefício. Classificar todas essas fontes familiares por VA/VR/dinheiro exigirá um resumo servidor específico que preserve a privacidade.
 
+O contexto acompanha a navegação: Casa é compartilhado; Contas/cartões e Configurações são pessoais. O Início compartilhado não apresenta saldo bancário, renda ou VA/VR pessoais. Contratos privados ficam no planejamento pessoal. Histórico de pagamentos respeita o mês e a visão; apenas o próprio pagador recebe a ação de estorno. Na Casa, Adicionar oferece despesa/recorrência inicialmente compartilhadas. Entrar novamente inicia em Meu espaço. A revisão e a comparação dos recursos estão em [REVISAO_MEU_ESPACO_CASA.md](REVISAO_MEU_ESPACO_CASA.md).
+
 ## Limites a avaliar antes de produção
+
+A continuação solicitada prioriza concluir a homologação autenticada pública antes de novas funcionalidades individuais. Permanecem pendentes o disponível bancário estimado após compromissos, orçamentos mensais pessoais por categoria, metas privadas de economia/reserva e um cenário histórico que reconheça aumentos recorrentes sem tratar bônus como salário habitual. A previsão histórica atual ainda é conservadora e limitada pela referência-base. A meta flexível da Casa não substitui uma meta financeira pessoal.
 
 O escopo original também prevê recursos que ainda precisam de ampliação: múltiplas cadências além da mensal, regras de recorrência “esta e seguintes”, adiantamentos familiares acima do saldo devido, edição de tags já utilizadas, anexos e onboarding guiado multipágina. Categorias/subcategorias têm criação, edição e desativação; tags e beneficiário podem ser informados no lançamento. Ajustes salariais mensais e referências futuras são persistidos; a mediana conservadora permanece uma simulação sem persistir versões de cenários alternativos. As limitações são explícitas; não se deve interpretar esta entrega como homologação integral de todos os itens do contrato.
 

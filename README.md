@@ -42,6 +42,7 @@ No ambiente cloud com Chromium existente, use `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/u
 ## Guias
 
 - [Relatório e acesso à homologação](docs/HOMOLOGACAO.md)
+- [Revisão de Meu espaço e Casa: comparação, correções e pendências](docs/REVISAO_MEU_ESPACO_CASA.md)
 - [Guia para familiares](docs/GUIA_FAMILIA.md)
 - [Produto e decisões de arquitetura](docs/PRODUCT_SPEC.md)
 - [Regras financeiras](docs/FINANCIAL_RULES.md)

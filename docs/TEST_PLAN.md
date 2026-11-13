@@ -1,4 +1,4 @@
-# Validação executada — 12/11/2026
+# Validação executada — 13/11/2026
 
 Dados exclusivamente fictícios. Resultados locais não constituem publicação, auditoria independente nem homologação de produção.
 
@@ -9,14 +9,14 @@ Dados exclusivamente fictícios. Resultados locais não constituem publicação,
 | `npm ci` a partir do lockfile | passou |
 | `npm run lint` | passou |
 | `npm run typecheck` (frontend, testes e servidor) | passou |
-| `npm test` | **86 testes passaram**, quatro suítes |
+| `npm test` | **89 testes passaram**, cinco suítes |
 | `npm run build` | passou; frontend, cache versionado PWA e bundle da Edge Function |
-| Chromium via `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e` | **35 testes passaram**, desktop, mobile, PWA e Auth com respostas sintéticas interceptadas |
+| Chromium via `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e` | **45 testes passaram**, desktop, mobile, PWA e Auth com respostas sintéticas interceptadas |
 | `npm run test:rls` em Supabase local | **15 testes pgTAP passaram**, rollback, após aplicar as 11 migrations em banco local descartável |
 | RLS no Supabase remoto autorizado (Finanças casa) | **15 verificações pgTAP passaram**, em transação com rollback; confirmado que não ficaram usuários/famílias/lançamentos de teste |
 | `npm run test:api` com Supabase local / Edge real | passou: bootstrap, login, convite, reuso negado, cadastro público negado, RLS HTTP, cartão, Pix, correção/rejeição, pagamento concorrente idempotente, salário mensal/correção versionada, calendário parcial, snapshot e recuperação |
-| Backup + `node scripts/test-restore.mjs ARQUIVO_PRIVADO.dump` | passou: contagens financeiras, integridade Auth e **15 verificações RLS após restauração** |
-| `npm audit --omit=dev` | zero vulnerabilidades conhecidas reportadas naquele momento |
+| Backup + `node scripts/test-restore.mjs ARQUIVO_PRIVADO.dump` | passou na etapa de 12/11: contagens financeiras, integridade Auth e **15 verificações RLS após restauração**; não repetido na revisão de contexto, sem mudança de schema |
+| `npm audit --omit=dev` | zero vulnerabilidades conhecidas reportadas em 12/11; não repetido nesta revisão |
 
 A suíte de domínio/banco usa PostgreSQL real compilado para WASM (PGlite), com roles e `auth.uid()` de teste. Ela não substitui Auth/PostgREST/Edge: por isso também foi executada a integração HTTP no Supabase local com Docker. O smoke de API recusa URLs remotas. Credenciais de teste são aleatórias e ficam em `.cache/` ignorado, nunca no código ou nos logs de resultado.
 
@@ -56,6 +56,12 @@ Há 10 casos E2E adicionais para gráficos em desktop/mobile: interação por te
 
 `tests/e2e/auth.spec.ts` usa um servidor Vite separado e intercepta todas as chamadas de um backend local sintético. Quatro casos (desktop/mobile) verificam login com vários membros, filtro do perfil pelo ID autenticado, carregamento dos gráficos pelo snapshot remoto, sessão em memória após recarga e falha de login sem fallback para demo. Isso encontrou/cobre a busca singular de perfis sem filtro, que falhava quando havia mais de um membro. São testes do frontend com mocks explícitos; não substituem a homologação Auth pública nem criam usuários reais.
 
+## Regressão de Meu espaço e Casa
+
+`tests/scope.test.ts` acrescenta três verificações do histórico de pagamentos: pagador e mês pessoais, obrigações compartilhadas com vários pagadores e isolamento entre famílias/perfil desconhecido. `tests/e2e/scope.spec.ts` acrescenta dez casos desktop/mobile: indicadores compartilhados sem saldo/renda/VA/VR pessoais, contexto das rotas, contratos privados, ações de Adicionar, Casa inicialmente marcada, busca limpa na troca e nova sessão iniciada em Meu espaço. O cenário Casa reproduziu a mistura de indicadores antes da correção. Axe A/AA passou também no Início compartilhado. Screenshots dos painéis pessoal/Casa foram inspecionadas com dados fictícios.
+
+Os 15 testes RLS locais, a integração HTTP local real e as 15 verificações remotas com rollback foram executados novamente em 13/11. Após o rollback remoto, as contagens continuaram em zero usuários, perfis e lançamentos. Isso não constitui bootstrap de administrador nem login público. Orçamentos, metas individuais e nova previsão histórica ainda não foram implementados/testados: aguardam a homologação autenticada pública prioritária. Consulte [a revisão](REVISAO_MEU_ESPACO_CASA.md).
+
 ## Repetir
 
 ```sh
@@ -82,5 +88,7 @@ No cloud, o navegador já instalado foi usado; o download inicial do Playwright 
 ## GitHub e regressões adicionais
 
 A branch `feat/aplicativo-financas-familiares` foi enviada preservando os commits originais. O PR permanece em rascunho, sem merge: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/pull/1 . CI remoto passou no commit `452e828`: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/43320253320 .
+
+O CI completo das correções de contexto passou no commit `c493a2330f236295ffe01b7d94b53554d3949fbf`: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/43413113205 . O resultado remoto não substitui os testes autenticados na URL pública.
 
 A chamada direta de correção salarial sem versão reproduziu uma falha de concorrência. A validação SQL passou a recusar versão ausente/nula; a regressão e a correção foram verificadas em PostgreSQL/PGlite e na integração HTTP local. O ensaio de restauração também compara as novas tabelas de previsão e referência salarial.
