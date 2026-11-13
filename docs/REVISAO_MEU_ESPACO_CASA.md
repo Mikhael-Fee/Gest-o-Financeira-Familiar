@@ -65,7 +65,9 @@ Esses itens são requisitos da continuação, não funcionalidades já entregues
 - A credencial de gerenciamento autorizada anteriormente foi verificada em memória e respondeu 200. Cadastro aberto permanece bloqueado e JWT configurado em 900 segundos. Nenhum valor de credencial foi incluído neste relatório.
 - Antes dos testes remotos, havia **zero usuários e zero perfis**. Os 15 testes RLS passaram em transação com rollback; depois continuaram **zero usuários, zero perfis e zero lançamentos**. Isso não equivale a criar o administrador nem testar login público.
 
-É necessário usar **Salvar rascunho** nas configurações do ambiente para solicitar a aplicação da rede. Depois: confirmar os hosts em `environment_status`, provisionar um administrador fictício pelo Auth administrativo/`bootstrap_identity`, emitir/consumir convites e testar login, recuperação e privacidade na URL pública. A criação deve usar credencial aleatória, sem senha padrão, sem credenciais no relatório e sem desligar RLS/cadastro por convite.
+Na retomada, o proprietário informou que **salvou e publicou** a configuração. Ainda assim, a sessão observada permanece na revisão 4 e novas conexões HTTP/Chromium continuam negadas. O rascunho correto está na revisão 10; a política ativa do proxy confirma o desencontro. O [diagnóstico detalhado](HOMOLOGACAO.md#retomada-após-publicação-informada-da-rede--13112026) registra as evidências e a necessidade de vincular a continuação à versão publicada, sem repetir a solicitação de salvar ou pedir novos tokens.
+
+Após resolver essa vinculação: confirmar os hosts em `environment_status`, provisionar um administrador fictício pelo Auth administrativo/`bootstrap_identity`, emitir/consumir convites e testar login, recuperação e privacidade na URL pública. A criação deve usar credencial aleatória, sem senha padrão, sem credenciais no relatório e sem desligar RLS/cadastro por convite.
 
 A aplicação da configuração no painel é um pré-requisito operacional já autorizado, não uma nova solicitação de autorização. Não foi contornada a política de rede. A organização Grupo de Louvor não foi alterada.
 

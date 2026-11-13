@@ -92,3 +92,11 @@ A branch `feat/aplicativo-financas-familiares` foi enviada preservando os commit
 O CI completo das correções de contexto passou no commit `c493a2330f236295ffe01b7d94b53554d3949fbf`: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/43413113205 . O resultado remoto não substitui os testes autenticados na URL pública.
 
 A chamada direta de correção salarial sem versão reproduziu uma falha de concorrência. A validação SQL passou a recusar versão ausente/nula; a regressão e a correção foram verificadas em PostgreSQL/PGlite e na integração HTTP local. O ensaio de restauração também compara as novas tabelas de previsão e referência salarial.
+
+## Retomada após publicação informada da configuração — 13/11/2026
+
+Foram executados novamente `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` e `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e`: todos passaram, com **89 testes em cinco suítes** e **45 casos de navegador**, sem falhas. Incluem as regressões de contexto Meu espaço/Casa, gráficos, permissões no PostgreSQL/PGlite, finanças, acessibilidade automatizada, mobile, PWA e Auth sintético.
+
+Novas conexões HTTPS aos dois hosts públicos foram negadas no túnel com `403 Forbidden`. Uma tentativa independente no Chromium, usando o proxy gerenciado e TLS preservados, falhou para ambos com `net::ERR_TUNNEL_CONNECTION_FAILED`. Nenhum cenário autenticado público chegou a executar: não foi criado administrador remoto nem testados convites, recuperação ou finanças na URL pública.
+
+A consulta somente de leitura à política ativa confirmou o runtime na revisão **4**, em desacordo com os hosts corretos do rascunho revisão **10**, mesmo após a publicação informada pelo proprietário. A API Netlify respondeu 200 e confirmou o deploy anterior `ready`. Consulte o [diagnóstico e a ação de vinculação da sessão](HOMOLOGACAO.md#retomada-após-publicação-informada-da-rede--13112026). Não houve novo teste pgTAP remoto, integração HTTP local ou ensaio de restauração nesta retomada; os resultados anteriores permanecem separados acima. Nenhuma regra de segurança ou credencial foi alterada para contornar a negação.

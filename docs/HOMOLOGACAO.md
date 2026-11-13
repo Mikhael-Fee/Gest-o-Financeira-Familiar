@@ -41,7 +41,7 @@ Builds automáticos foram pausados para evitar novas tentativas dessa conexão i
 
 ## Pendências para encerrar a homologação
 
-O ambiente de execução ainda está na revisão de rede anterior, que permite somente as APIs de gerenciamento. Os hosts `ovoqhnoaigjzihhpdukn.supabase.co` e `entre-nos-homologacao.netlify.app` foram acrescentados ao rascunho; o proprietário precisa usar **Salvar rascunho** nas configurações do ambiente para aplicá-los.
+O proprietário informou que salvou e publicou a configuração. A conferência posterior confirmou, porém, que esta sessão continua na revisão de rede anterior, permitindo somente as APIs de gerenciamento. Os dois hosts públicos constam no rascunho correto, mas não estão liberados no runtime desta tarefa. Consulte o diagnóstico da retomada ao final deste documento; não é necessário repetir a inclusão dos hosts nem fornecer novos tokens para resolver esse bloqueio de rede.
 
 Depois dessa liberação, falta criar o primeiro administrador fictício via Auth administrativo e bootstrap, emitir convites e testar login, recuperação, persistência, concorrência e privacidade diretamente na URL pública. **Esses testes autenticados públicos ainda não foram executados.** Os testes locais e o estado `ready` não os substituem. Ainda não há credencial de primeiro acesso a entregar.
 
@@ -72,3 +72,28 @@ As correções foram publicadas **somente no site de homologação**, usando o c
 **A homologação autenticada pública continua bloqueada.** O runtime observado permanece na revisão 4, permitindo as três APIs de gerenciamento, enquanto os dois hosts públicos constam apenas no rascunho. As ferramentas disponíveis salvam propostas; a aplicação dessa configuração precisa ocorrer no painel do ambiente. A configuração já autorizada não está aplicada e novas conexões foram negadas pelo proxy com `403 Forbidden`. Portanto, não foi criado o administrador remoto e os testes públicos de login/convites/privacidade não foram executados.
 
 Orçamentos pessoais por categoria, metas de economia/reserva, disponível estimado e nova previsão histórica que reconheça aumentos permanecem pendentes, respeitando a ordem solicitada: concluir primeiro o bootstrap e a homologação autenticada na URL pública.
+
+## Retomada após publicação informada da rede — 13/11/2026
+
+O proprietário informou ter salvo e publicado a configuração do ambiente. Em novas conexões às **08:10 de Brasília (11:10 UTC)**, ambos os destinos continuaram negados. Não se assumiu que o rascunho era equivalente à configuração aplicada: foram conferidos separadamente o estado do runtime, o arquivo de inicialização, a política ativa do proxy e o navegador.
+
+| Evidência | Resultado observado |
+|---|---|
+| Configuração editável | Rascunho revisão **10**, com as três APIs e os dois hosts públicos corretos |
+| Runtime desta tarefa | `spec_revision = observed_spec_revision = 4`, `observations_current = true`, estado `running`, política `enforced` |
+| Hosts customizados ativos no runtime | Somente `api.github.com`, `api.netlify.com` e `api.supabase.com` |
+| Política de inicialização | Não contém os dois hosts públicos |
+| Proxy ativo, consulta somente de leitura às 11:11:59 UTC | Origem `runtime`, modo `allowlist`; os dois hosts públicos não aparecem entre as regras retornadas |
+| GET `https://ovoqhnoaigjzihhpdukn.supabase.co/auth/v1/health` | `Tunnel connection failed: 403 Forbidden` |
+| GET `https://entre-nos-homologacao.netlify.app/` | `Tunnel connection failed: 403 Forbidden` |
+| Chromium com o proxy gerenciado e TLS preservados | `net::ERR_TUNNEL_CONNECTION_FAILED` para ambos |
+| API Netlify, somente o site autorizado | HTTP **200**, deploy `6af6eebc4013bee8334579c0` continua `ready`, builds por push pausados |
+| Histórico de diagnóstico disponibilizado pela plataforma | `not_found`, sem registros; não há log histórico que explique por que a atualização não chegou à sessão |
+
+**Diagnóstico confirmado:** a sessão anexada continua com a política antiga e o proxy nega o túnel antes de qualquer login ou avaliação de RLS pelo aplicativo. A publicação informada não se refletiu neste runtime observado. As evidências disponíveis não permitem determinar se houve falha de propagação ou se a publicação foi destinada somente a futuras tarefas. Não foi diagnosticada falha no Supabase/Netlify nem falta de token a partir desses erros de túnel.
+
+Não há ferramenta disponível para reaplicar/reanexar a versão publicada ao runtime atual. A ação necessária é executar a continuação em uma tarefa vinculada à versão publicada que contenha os cinco hosts, ou corrigir essa vinculação pelo produto/suporte caso a sessão devesse ter sido atualizada. Preserve o repositório, selecione `feat/aplicativo-financas-familiares` e continue o PR #1; não recrie projetos nem a infraestrutura. A primeira verificação na nova sessão deve comparar a política aplicada com os dois hosts e repetir conexões novas.
+
+O rascunho e as credenciais não foram sobrescritos nesta retomada. Não se usaram relays, acesso direto fora do proxy, DNS alternativo, TLS desabilitado ou CI como ponte para os hosts negados. Também não houve criação de administrador remoto, migration, novo deploy, dados reais ou acesso ao Grupo de Louvor.
+
+As funcionalidades individuais continuam pendentes, em respeito à ordem solicitada. A conclusão autenticada exige o administrador fictício, convites, recuperação, testes financeiros na URL pública e isolamento entre familiares. Os resultados de regressão desta retomada estão em [TEST_PLAN.md](TEST_PLAN.md).
