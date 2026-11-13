@@ -229,6 +229,25 @@ export function scopedObligations(s: State, owner: string, scope: ReportScope) {
     scope === "house" ? o.house : o.owner_id === owner,
   );
 }
+export function scopedPaymentHistory(
+  s: State,
+  owner: string,
+  scope: ReportScope,
+  month: string,
+) {
+  const family = s.profiles.find((p) => p.id === owner)?.family_id;
+  if (scope === "house" && !family) return [];
+  return s.payments.filter(
+    (p) =>
+      p.paid_on.startsWith(month) &&
+      (scope === "personal"
+        ? p.payer_id === owner
+        : s.obligations.some(
+            (o) =>
+              o.id === p.obligation_id && o.house && o.family_id === family,
+          )),
+  );
+}
 export function obligationWarnings(
   s: State,
   owner: string,

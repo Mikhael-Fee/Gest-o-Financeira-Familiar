@@ -79,7 +79,7 @@ test("empréstimo antigo mantém histórico desconhecido e não gera caixa", asy
       .last(),
   ).toBeVisible();
   await expect(
-    page.getByText("Nenhum pagamento registrado nesta sessão."),
+    page.getByText("Nenhum pagamento registrado neste período e visão."),
   ).toBeVisible();
 });
 test("teclado e layout não excedem a tela", async ({ page }) => {

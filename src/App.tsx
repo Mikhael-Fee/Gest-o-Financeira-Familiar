@@ -7,7 +7,14 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import {
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import { scopedPaymentHistory, type ReportScope } from "./domain/reports";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -249,7 +256,7 @@ export default function App() {
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [month, setMonth] = useState(today().slice(0, 7)),
-    [scope, setScope] = useState("personal"),
+    [scope, setScope] = useState<ReportScope>("personal"),
     [form, setForm] = useState(""),
     [busy, setBusy] = useState(false),
     [search, setSearch] = useState(""),
@@ -267,6 +274,7 @@ export default function App() {
   const requestKey = useRef(id());
   const partIds = useRef([id(), id()]);
   const navigate = useNavigate();
+  const location = useLocation();
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const up = () => setOnline(navigator.onLine);
@@ -308,6 +316,10 @@ export default function App() {
     repository.current = isDemo ? new DemoRepository() : new RemoteRepository();
     setUser(u);
     setDemo(isDemo);
+    setScope("personal");
+    setSearch("");
+    setMenu(false);
+    setForm("");
     navigate("/");
     await load();
   }
@@ -348,6 +360,10 @@ export default function App() {
     setError("");
     setNotice("");
     setInvite("");
+    setScope("personal");
+    setSearch("");
+    setMenu(false);
+    setForm("");
   }
   if (!user)
     return (
@@ -370,7 +386,38 @@ export default function App() {
       )
       .map((c) => c.name),
   ];
-  const personal = scope === "personal";
+  const personalPages = ["/contas", "/configuracoes"];
+  const currentPath = location.pathname.replace(/\/+$/, "") || "/";
+  const viewScope: ReportScope =
+    currentPath === "/casa"
+      ? "house"
+      : personalPages.includes(currentPath)
+        ? "personal"
+        : scope;
+  const personal = viewScope === "personal";
+  function prepareNavigation(path: string) {
+    setScope(
+      path === "/casa"
+        ? "house"
+        : personalPages.includes(path)
+          ? "personal"
+          : viewScope,
+    );
+    setSearch("");
+    setMenu(false);
+  }
+  function goTo(path: string) {
+    prepareNavigation(path);
+    navigate(path);
+  }
+  function changeScope(next: ReportScope) {
+    setScope(next);
+    setSearch("");
+    setMenu(false);
+    if (next === "personal" && currentPath === "/casa") navigate("/");
+    if (next === "house" && personalPages.includes(currentPath))
+      navigate("/casa");
+  }
   const t = totals(state, month, personal ? user.id : undefined, !personal);
   const accounts = state.accounts.filter((a) => a.owner_id === user.id);
   const bankBalance = accounts
@@ -395,6 +442,8 @@ export default function App() {
     )
     .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
   const goal = contribution(state, user.id, month);
+  const payments = scopedPaymentHistory(state, user.id, viewScope, month);
+  const plans = state.plans.filter((p) => p.owner_id === user.id);
   const heading = (title: string, subtitle: string, action?: ReactNode) => (
     <div className="section-heading">
       <div>
@@ -783,7 +832,11 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className={`sidebar ${menu ? "expanded" : ""}`}>
-        <NavLink className="brand" to="/">
+        <NavLink
+          className="brand"
+          to="/"
+          onClick={() => prepareNavigation("/")}
+        >
           <span className="brand-icon">
             <House size={22} />
           </span>
@@ -796,7 +849,7 @@ export default function App() {
               key={path}
               to={path}
               end={path === "/"}
-              onClick={() => setMenu(false)}
+              onClick={() => prepareNavigation(path)}
             >
               <Icon size={20} />
               {label}
@@ -832,8 +885,11 @@ export default function App() {
             <Menu />
           </button>
           <span className="breadcrumb">
-            Minha organização <ChevronRight size={14} />{" "}
-            <strong>Visão geral</strong>
+            {personal ? "Meu espaço" : "Casa"} <ChevronRight size={14} />{" "}
+            <strong>
+              {navigation.find(([path]) => path === currentPath)?.[1] ??
+                "Visão geral"}
+            </strong>
           </span>
           <div className="header-right">
             <span className="secure">
@@ -843,14 +899,18 @@ export default function App() {
             <button
               className="icon-button"
               aria-label="Ver pendências"
-              onClick={() => navigate("/planejamento")}
+              onClick={() => goTo("/planejamento")}
             >
               <Bell size={19} />
             </button>
             <span className="avatar small">{user.name.slice(0, 1)}</span>
           </div>
         </header>
-        <main id="main-content" className="content">
+        <main
+          id="main-content"
+          className="content"
+          data-financial-scope={viewScope}
+        >
           <div className="page-heading">
             <div>
               <span className="eyebrow">UM PASSO DE CADA VEZ</span>
@@ -858,7 +918,11 @@ export default function App() {
                 Olá, {user.name}
                 <span className="greeting-dot">.</span>
               </h1>
-              <p>Vamos cuidar do que importa para você e sua família.</p>
+              <p>
+                {personal
+                  ? "Seu dinheiro e seus planos, no seu ritmo."
+                  : "Contas, despesas e contribuições compartilhadas da Casa."}
+              </p>
             </div>
             <button className="primary" onClick={() => setForm("choose")}>
               <Plus size={19} /> Adicionar
@@ -895,16 +959,20 @@ export default function App() {
             </p>
           )}
           <div className="toolbar">
-            <div className="segmented" aria-label="Visão financeira">
+            <div
+              className="segmented"
+              role="group"
+              aria-label="Visão financeira"
+            >
               <button
                 aria-pressed={personal}
-                onClick={() => setScope("personal")}
+                onClick={() => changeScope("personal")}
               >
                 <Wallet size={16} /> Meu espaço
               </button>
               <button
                 aria-pressed={!personal}
-                onClick={() => setScope("house")}
+                onClick={() => changeScope("house")}
               >
                 <House size={16} /> Casa
               </button>
@@ -930,27 +998,56 @@ export default function App() {
                 element={
                   <>
                     <div className="metrics">
-                      <Metric
-                        label="Saldo em contas"
-                        value={money(bankBalance)}
-                        hint="Saldo registrado · confira no banco"
-                      />
-                      <Metric
-                        label="Entradas do mês"
-                        value={money(t.income)}
-                        hint="Somente receitas confirmadas"
-                        positive
-                      />
-                      <Metric
-                        label="Consumo do mês"
-                        value={money(t.consumption)}
-                        hint="Sem duplicar pagamentos de fatura"
-                      />
-                      <Metric
-                        label="Obrigações em aberto"
-                        value={money(t.due)}
-                        hint="Inclui pendências dos meses anteriores"
-                      />
+                      {personal ? (
+                        <>
+                          <Metric
+                            label="Saldo em contas"
+                            value={money(bankBalance)}
+                            hint="Saldo registrado hoje · confira no banco"
+                          />
+                          <Metric
+                            label="Entradas do mês"
+                            value={money(t.income)}
+                            hint="Somente receitas confirmadas"
+                            positive
+                          />
+                          <Metric
+                            label="Consumo do mês"
+                            value={money(t.consumption)}
+                            hint="Inclui sua parte da Casa · sem somar pagamentos de fatura novamente"
+                          />
+                          <Metric
+                            label="Obrigações em aberto"
+                            value={money(t.due)}
+                            hint="Inclui pendências dos meses anteriores"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Metric
+                            label="Consumo da Casa"
+                            value={money(t.consumption)}
+                            hint="Somente despesas compartilhadas · sem repetir contribuições"
+                          />
+                          <Metric
+                            label="Obrigações da Casa"
+                            value={money(t.due)}
+                            hint="Inclui pendências compartilhadas anteriores ao mês"
+                          />
+                          <Metric
+                            label="Contribuições registradas"
+                            value={money(
+                              state.profiles.reduce(
+                                (n, p) =>
+                                  n + contribution(state, p.id, month).actual,
+                                0,
+                              ),
+                            )}
+                            hint="Gastos efetivos da Casa · não são renda nova"
+                            positive
+                          />
+                        </>
+                      )}
                     </div>
                     <div className="dashboard-grid">
                       <section className="panel">
@@ -959,80 +1056,82 @@ export default function App() {
                           "Um olhar para o que precisa de atenção.",
                           <button
                             className="text-button"
-                            onClick={() => navigate("/planejamento")}
+                            onClick={() => goTo("/planejamento")}
                           >
                             Ver todos <ChevronRight size={15} />
                           </button>,
                         )}
                         {obligationList(4)}
                       </section>
-                      <section className="house-panel">
-                        <span className="house-symbol">
-                          <House size={24} />
-                        </span>
-                        <span className="eyebrow">NOSSA CASA</span>
-                        <h2>
-                          Cada contribuição
-                          <br />
-                          faz a diferença.
-                        </h2>
-                        <p>
-                          Um objetivo compartilhado, sem transformar a diferença
-                          em dívida.
-                        </p>
-                        <div className="goal-values">
-                          <strong>{money(goal.actual)}</strong>
-                          <span>de {money(goal.goal)}</span>
-                        </div>
-                        <progress
-                          aria-label="Progresso da meta Casa"
-                          value={Math.min(goal.actual, goal.goal)}
-                          max={goal.goal || 1}
-                        />
-                        <small>
-                          {goal.above
-                            ? `${money(goal.above)} acima da meta`
-                            : `Faltam ${money(goal.missing)} para sua meta flexível`}
-                        </small>
-                        <button
-                          className="secondary full"
-                          onClick={() => navigate("/casa")}
-                        >
-                          Acompanhar a Casa <ChevronRight size={17} />
-                        </button>
-                      </section>
+                      {!personal && (
+                        <section className="house-panel">
+                          <span className="house-symbol">
+                            <House size={24} />
+                          </span>
+                          <span className="eyebrow">NOSSA CASA</span>
+                          <h2>Sua contribuição à Casa</h2>
+                          <p>
+                            Um objetivo compartilhado, sem transformar a
+                            diferença em dívida.
+                          </p>
+                          <div className="goal-values">
+                            <strong>{money(goal.actual)}</strong>
+                            <span>de {money(goal.goal)}</span>
+                          </div>
+                          <progress
+                            aria-label="Progresso da meta Casa"
+                            value={Math.min(goal.actual, goal.goal)}
+                            max={goal.goal || 1}
+                          />
+                          <small>
+                            {goal.above
+                              ? `${money(goal.above)} acima da meta`
+                              : `Faltam ${money(goal.missing)} para sua meta flexível`}
+                          </small>
+                          <button
+                            className="secondary full"
+                            onClick={() => goTo("/casa")}
+                          >
+                            Acompanhar a Casa <ChevronRight size={17} />
+                          </button>
+                        </section>
+                      )}
                       <section className="panel">
                         {heading(
                           "Últimas movimentações",
                           "O dia a dia do seu dinheiro.",
                           <button
                             className="text-button"
-                            onClick={() => navigate("/movimentacoes")}
+                            onClick={() => goTo("/movimentacoes")}
                           >
                             Ver todas <ChevronRight size={15} />
                           </button>,
                         )}
                         {entryList(5)}
                       </section>
-                      <section className="panel benefit-panel">
-                        {heading(
-                          "Alimentação, bem cuidada",
-                          "Benefícios separados do dinheiro em conta.",
-                        )}
-                        <span className="benefit-total">{money(benefit)}</span>
-                        <p className="muted">Saldo registrado em VA e VR</p>
-                        <div className="divider" />
-                        <p>
-                          Recargas não são salário. Gastos com alimentação da
-                          Casa podem contar como contribuição.
-                        </p>
-                        <button
-                          className="text-button"
-                          onClick={() => navigate("/contas")}
-                        >
-                          Ver minhas carteiras <ChevronRight size={16} />
-                        </button>
-                      </section>
+                      {personal && (
+                        <section className="panel benefit-panel">
+                          {heading(
+                            "Alimentação, bem cuidada",
+                            "Benefícios separados do dinheiro em conta.",
+                          )}
+                          <span className="benefit-total">
+                            {money(benefit)}
+                          </span>
+                          <p className="muted">Saldo registrado em VA e VR</p>
+                          <div className="divider" />
+                          <p>
+                            Recargas não são salário. Gastos com alimentação da
+                            Casa podem contar como contribuição.
+                          </p>
+                          <button
+                            className="text-button"
+                            onClick={() => goTo("/contas")}
+                          >
+                            Ver minhas carteiras <ChevronRight size={16} />
+                          </button>
+                        </section>
+                      )}
                     </div>
                     <div className="footer-note">
                       <ShieldCheck size={15} /> Seu dinheiro é pessoal. O
@@ -1294,110 +1393,113 @@ export default function App() {
                 path="/planejamento"
                 element={
                   <>
-                    <section className="panel">
-                      {heading(
-                        "Empréstimos e parcelas",
-                        "Preservamos o histórico e destacamos o que ainda precisa ser conferido.",
-                        <button
-                          className="secondary"
-                          onClick={() => setForm("loan")}
-                        >
-                          Cadastrar empréstimo
-                        </button>,
-                      )}
-                      {state.plans.length ? (
-                        state.plans.map((p) => (
-                          <details className="plan" key={p.id}>
-                            <summary>
-                              <span>
-                                <strong>{p.description}</strong>
-                                <small>
-                                  {p.count} × {money(p.amount)} · Primeiro
-                                  vencimento:{" "}
-                                  {p.first_due ??
-                                    "desconhecido · calendário parcial"}
-                                </small>
-                              </span>
-                              <ChevronRight size={18} />
-                            </summary>
-                            <p>
-                              Última informada na abertura: {p.last_paid}/
-                              {p.count}
-                              {p.last_paid_on
-                                ? ` em ${p.last_paid_on}`
-                                : ""}.{" "}
-                              {p.history_confirmed
-                                ? "Histórico anterior confirmado."
-                                : "Parcelas anteriores permanecem a conferir."}
-                            </p>
-                            <p>
-                              Maior número quitado:{" "}
-                              {loanSummary(p, state).highestPaid}/{p.count}.
-                              Próxima obrigação ainda aberta:{" "}
-                              {loanSummary(p, state).earliestOpen?.number ??
-                                "nenhuma"}{" "}
-                              ·{" "}
-                              {loanSummary(p, state).earliestOpen?.due_on ??
-                                "—"}
-                              .
-                            </p>
-                            <p>
-                              {p.first_due
-                                ? "Último vencimento contratual: "
-                                : "Último vencimento projetado (calendário parcial): "}
-                              {loanSummary(p, state).lastDue ?? "A conferir"}.
-                              Soma em aberto:{" "}
-                              {money(
-                                state.obligations
+                    {personal && (
+                      <section className="panel">
+                        {heading(
+                          "Empréstimos e parcelas",
+                          "Preservamos o histórico e destacamos o que ainda precisa ser conferido.",
+                          <button
+                            className="secondary"
+                            onClick={() => setForm("loan")}
+                          >
+                            Cadastrar empréstimo
+                          </button>,
+                        )}
+                        {plans.length ? (
+                          plans.map((p) => (
+                            <details className="plan" key={p.id}>
+                              <summary>
+                                <span>
+                                  <strong>{p.description}</strong>
+                                  <small>
+                                    {p.count} × {money(p.amount)} · Primeiro
+                                    vencimento:{" "}
+                                    {p.first_due ??
+                                      "desconhecido · calendário parcial"}
+                                  </small>
+                                </span>
+                                <ChevronRight size={18} />
+                              </summary>
+                              <p>
+                                Última informada na abertura: {p.last_paid}/
+                                {p.count}
+                                {p.last_paid_on
+                                  ? ` em ${p.last_paid_on}`
+                                  : ""}.{" "}
+                                {p.history_confirmed
+                                  ? "Histórico anterior confirmado."
+                                  : "Parcelas anteriores permanecem a conferir."}
+                              </p>
+                              <p>
+                                Maior número quitado:{" "}
+                                {loanSummary(p, state).highestPaid}/{p.count}.
+                                Próxima obrigação ainda aberta:{" "}
+                                {loanSummary(p, state).earliestOpen?.number ??
+                                  "nenhuma"}{" "}
+                                ·{" "}
+                                {loanSummary(p, state).earliestOpen?.due_on ??
+                                  "—"}
+                                .
+                              </p>
+                              <p>
+                                {p.first_due
+                                  ? "Último vencimento contratual: "
+                                  : "Último vencimento projetado (calendário parcial): "}
+                                {loanSummary(p, state).lastDue ?? "A conferir"}.
+                                Soma em aberto:{" "}
+                                {money(
+                                  state.obligations
+                                    .filter((o) => o.plan_id === p.id)
+                                    .reduce(
+                                      (n, o) =>
+                                        n + remaining(o, state.payments),
+                                      0,
+                                    ),
+                                )}
+                                . Não equivale a saldo para quitação antecipada.
+                              </p>
+                              <button
+                                className="secondary"
+                                onClick={() => setForm(`replace_plan:${p.id}`)}
+                              >
+                                Renegociar saldo / registrar cotação de quitação
+                              </button>
+                              <div className="installments">
+                                {state.obligations
                                   .filter((o) => o.plan_id === p.id)
-                                  .reduce(
-                                    (n, o) => n + remaining(o, state.payments),
-                                    0,
-                                  ),
-                              )}
-                              . Não equivale a saldo para quitação antecipada.
-                            </p>
-                            <button
-                              className="secondary"
-                              onClick={() => setForm(`replace_plan:${p.id}`)}
-                            >
-                              Renegociar saldo / registrar cotação de quitação
-                            </button>
-                            <div className="installments">
-                              {state.obligations
-                                .filter((o) => o.plan_id === p.id)
-                                .map((o) => (
-                                  <div key={o.id}>
-                                    <b>
-                                      {o.number}/{p.count}
-                                    </b>
-                                    <span>
-                                      {o.due_on ?? "Vencimento desconhecido"}
-                                    </span>
-                                    <strong>
-                                      {money(remaining(o, state.payments))}
-                                    </strong>
-                                    <small>{status(o, state.payments)}</small>
-                                    {remaining(o, state.payments) > 0 && (
-                                      <button
-                                        onClick={() => setForm(`pay:${o.id}`)}
-                                      >
-                                        Pagar
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
-                            </div>
-                          </details>
-                        ))
-                      ) : (
-                        <Empty>
-                          Tem uma dívida em andamento? Cadastre a primeira data,
-                          o total de parcelas e somente os pagamentos
-                          confirmados.
-                        </Empty>
-                      )}
-                    </section>
+                                  .map((o) => (
+                                    <div key={o.id}>
+                                      <b>
+                                        {o.number}/{p.count}
+                                      </b>
+                                      <span>
+                                        {o.due_on ?? "Vencimento desconhecido"}
+                                      </span>
+                                      <strong>
+                                        {money(remaining(o, state.payments))}
+                                      </strong>
+                                      <small>{status(o, state.payments)}</small>
+                                      {remaining(o, state.payments) > 0 && (
+                                        <button
+                                          onClick={() => setForm(`pay:${o.id}`)}
+                                        >
+                                          Pagar
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                              </div>
+                            </details>
+                          ))
+                        ) : (
+                          <Empty>
+                            Tem uma dívida em andamento? Cadastre a primeira
+                            data, o total de parcelas e somente os pagamentos
+                            confirmados.
+                          </Empty>
+                        )}
+                      </section>
+                    )}
                     <section className="panel">
                       {heading(
                         "Todas as obrigações em aberto",
@@ -1442,8 +1544,8 @@ export default function App() {
                         "Saídas efetivas na data real, sem gerar novo consumo.",
                       )}
                       <div className="entry-list">
-                        {state.payments.length ? (
-                          state.payments.map((p) => (
+                        {payments.length ? (
+                          payments.map((p) => (
                             <div className="entry-row" key={p.id}>
                               <div className="entry-info">
                                 <strong>
@@ -1458,7 +1560,7 @@ export default function App() {
                               <b>{money(p.amount)}</b>
                               {p.reversed_on ? (
                                 <Badge>Estornado em {p.reversed_on}</Badge>
-                              ) : (
+                              ) : p.payer_id === user.id ? (
                                 <button
                                   className="text-button"
                                   onClick={() =>
@@ -1467,12 +1569,12 @@ export default function App() {
                                 >
                                   Estornar
                                 </button>
-                              )}
+                              ) : null}
                             </div>
                           ))
                         ) : (
                           <Empty>
-                            Nenhum pagamento registrado nesta sessão.
+                            Nenhum pagamento registrado neste período e visão.
                           </Empty>
                         )}
                       </div>
@@ -1484,7 +1586,7 @@ export default function App() {
                 path="/relatorios"
                 element={
                   <Reports
-                    key={user.id + ":" + scope}
+                    key={user.id + ":" + viewScope}
                     state={state}
                     ownerId={user.id}
                     month={month}
@@ -1647,12 +1749,20 @@ export default function App() {
       </div>
       <nav className="bottom-nav" aria-label="Navegação no celular">
         {navigation.slice(0, 3).map(([p, l, Icon]) => (
-          <NavLink key={p} to={p} end={p === "/"}>
+          <NavLink
+            key={p}
+            to={p}
+            end={p === "/"}
+            onClick={() => prepareNavigation(p)}
+          >
             <Icon size={21} />
             <span>{l}</span>
           </NavLink>
         ))}
-        <NavLink to="/planejamento">
+        <NavLink
+          to="/planejamento"
+          onClick={() => prepareNavigation("/planejamento")}
+        >
           <ChartNoAxesCombined size={21} />
           <span>Planejar</span>
         </NavLink>
@@ -1685,6 +1795,12 @@ export default function App() {
         </div>
         {form === "choose" ? (
           <div className="action-grid">
+            {!personal && (
+              <p className="muted">
+                Receitas, contas bancárias e contratos pessoais ficam em Meu
+                espaço.
+              </p>
+            )}
             {[
               ["expense", "Despesa", "Uma compra ou gasto do dia a dia"],
               ["income", "Receita", "Salário ou entrada extra recebida"],
@@ -1725,22 +1841,26 @@ export default function App() {
                 "Empréstimo recebido",
                 "Entrada de crédito, separada de salário",
               ],
-            ].map(([key, label, help]) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setError("");
-                  setForm(key);
-                }}
-              >
-                <Plus size={19} />
-                <span>
-                  <strong>{label}</strong>
-                  <small>{help}</small>
-                </span>
-                <ChevronRight size={18} />
-              </button>
-            ))}
+            ]
+              .filter(
+                ([key]) => personal || ["expense", "recurrence"].includes(key),
+              )
+              .map(([key, label, help]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setError("");
+                    setForm(key);
+                  }}
+                >
+                  <Plus size={19} />
+                  <span>
+                    <strong>{label}</strong>
+                    <small>{help}</small>
+                  </span>
+                  <ChevronRight size={18} />
+                </button>
+              ))}
           </div>
         ) : (
           <form onSubmit={submit} key={form}>
@@ -2005,7 +2125,12 @@ export default function App() {
                   </Field>
                 </details>
                 <label className="checkbox">
-                  <input name="house" type="checkbox" /> Esta despesa é da Casa
+                  <input
+                    name="house"
+                    type="checkbox"
+                    defaultChecked={!personal}
+                  />{" "}
+                  Esta despesa é da Casa
                 </label>
                 <details>
                   <summary>Compra com parte pessoal e parte da Casa</summary>
@@ -2245,7 +2370,12 @@ export default function App() {
             {formType === "recurrence" && (
               <>
                 <label className="checkbox">
-                  <input type="checkbox" name="house" /> Conta da Casa
+                  <input
+                    type="checkbox"
+                    name="house"
+                    defaultChecked={!personal}
+                  />{" "}
+                  Conta da Casa
                 </label>
                 <label className="checkbox">
                   <input type="checkbox" name="variable" /> Valor variável ·
