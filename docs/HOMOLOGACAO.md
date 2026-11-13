@@ -54,3 +54,9 @@ Foram implementados seis gráficos interativos, com filtros, comparação mensal
 O login passou a selecionar o perfil pelo ID retornado pelo Auth, evitando erro de resultado singular em famílias com vários membros. Os testes de frontend desse fluxo usam respostas sintéticas interceptadas e não configuram o primeiro administrador remoto.
 
 A execução corrente passou em lint, tipos, build e 86 testes de domínio/banco. A suíte de navegador passou nos 35 casos, incluindo gráficos e Auth sintético. A rede pública foi consultada novamente nesta etapa: o proxy respondeu `Tunnel connection failed: 403 Forbidden` para os dois hosts. Assim, bootstrap e testes autenticados na URL pública continuam pendentes da aplicação do rascunho de rede. Nenhum projeto ou dado do Grupo de Louvor foi acessado nesta etapa e nenhuma migration nova foi necessária.
+
+### Publicação desta etapa
+
+A versão com gráficos, commit `2e56b74599249dbf3e079bdcfe1f8348e4b0b089`, foi publicada em 12/11/2026 às 21:44 (Brasília), no deploy `6af65d30026a1d5ece5764a3`. A API Netlify confirmou `ready`, o deploy no endereço principal e 19 arquivos públicos, sem arquivos de ambiente/cache/servidor. Os builds automáticos foram novamente pausados após essa publicação manual autorizada. O endereço continua https://entre-nos-homologacao.netlify.app .
+
+O seletor de mês também preserva o último período válido quando o campo é limpo, evitando erro de renderização dos relatórios. Essa regressão e a revisão visual/acessível foram verificadas novamente em desktop e celular. O CI completo do commit de gráficos passou: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/43339278411 .

@@ -334,6 +334,8 @@ test("gráficos comparam 12 meses, têm tabela alternativa e estado vazio", asyn
   await expect(evolution.locator(".chart-selection")).toContainText("350,00");
   await expect(evolution.locator(".chart-selection")).toContainText("400,00");
   await page.getByLabel("Mês de referência").fill("2026-10");
+  await page.getByLabel("Mês de referência").fill("");
+  await expect(page.getByLabel("Mês de referência")).toHaveValue("2026-10");
   await expect(
     page.getByText("Nenhuma despesa para este mês e estes filtros.", {
       exact: true,
@@ -442,9 +444,7 @@ test("gráficos são acessíveis, cabem na tela e não carregam serviços extern
     ),
   ).toBe(true);
   expect(external).toEqual([]);
-  await page
-    .locator(".report-chart-grid")
-    .screenshot({
-      path: `/tmp/entre-nos-graficos-${test.info().project.name}.png`,
-    });
+  await page.locator(".report-chart-grid").screenshot({
+    path: `/tmp/entre-nos-graficos-${test.info().project.name}.png`,
+  });
 });

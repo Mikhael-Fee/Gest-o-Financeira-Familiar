@@ -915,7 +915,9 @@ export default function App() {
                 aria-label="Mês de referência"
                 type="month"
                 value={month}
-                onChange={(e) => setMonth(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value) setMonth(e.target.value);
+                }}
               />
             </label>
           </div>
