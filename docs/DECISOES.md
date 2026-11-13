@@ -15,3 +15,12 @@ As pessoas no cenário de cartão compartilhado estão **anônimas** porque o Gi
 11. Bancos iniciais selecionáveis: Inter, Nubank, Itaú, Bradesco, Mercado Pago, Caixa. O usuário pode criar outros.
 12. UI simples, dark-first, mobile e instalável como PWA. Supabase com acesso por username+senha mediado por autenticação segura e convites.
 13. Registrar fluxos de caixa, consumo e planejamento em vistas independentes. Evitar receita fictícia e dupla contagem entre familiares.
+
+## Decisões técnicas desta implementação
+
+- React/TypeScript/Vite; dados centralizados em repositório, snapshot SQL e comandos transacionais. Não foi necessário adicionar um cache de consultas independente para o fluxo inicial.
+- Centavos bigint/inteiros; calendário local por data âncora. Compra parcelada reconhece consumo total e passivo por parcelas. Correções preservam originais.
+- Demonstração explicitamente fictícia em memória; nenhum fallback silencioso após autenticação. Sessão também fica em memória, com renovação enquanto a aba está aberta; persistência entre recargas foi adiada em favor da proteção em dispositivo compartilhado.
+- Edge Function empacotada a partir do lockfile, sem dependências remotas baixadas durante o atendimento. Supabase Auth continua responsável por senhas; não foi criado autenticador de senhas próprio.
+- Compra pessoal/Casa gera partes atômicas vinculadas a agregado privado; fontes rateadas proporcionalmente. Isso evita expor a parcela pessoal a membros da Casa.
+- Recursos não concluídos e diferenças para o contrato integral são identificados em `PRODUCT_SPEC.md`, sem tratar estimativa, infraestrutura remota ou homologação como já concluídas.

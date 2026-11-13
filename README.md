@@ -1,29 +1,54 @@
-# Finanças Familiares — projeto PWA
+# Entre Nós · Finanças Familiares
 
-Aplicativo de finanças individuais e da Casa, planejado para uma família de quatro pessoas, com cartões compartilhados, empréstimos, parcelas, benefícios VA/VR, previsões e contribuições flexíveis.
+Aplicação React/TypeScript/PWA com núcleo financeiro em centavos inteiros, integração Supabase, migrations/RLS, autenticação por convite e demonstração isolada com dados fictícios. Interface em português, escura e mobile-first.
 
-## Estado do repositório
+**Versão de desenvolvimento, sem publicação em produção e sem dados reais.** Há funcionalidades do contrato original que ainda precisam de ampliação/homologação; consulte [escopo e limites](docs/PRODUCT_SPEC.md). Não interpretar uma suíte local verde como autorização para usar finanças reais.
 
-**Ambiente preparado para o Codex; a aplicação ainda não foi implementada.** Este repositório está público. Nenhuma conta real, dado bancário, senha ou chave deve ser armazenado aqui.
+## Executar
 
-## Começar no Codex
+```sh
+npm ci
+npm run dev
+```
 
-1. Abra este repositório em uma tarefa do Codex.
-2. O Codex lê as orientações do [AGENTS.md](./AGENTS.md), segundo a documentação oficial.
-3. A especificação integral está em [docs/ESPECIFICACAO_CODEX.md](./docs/ESPECIFICACAO_CODEX.md).
-4. Confira [docs/COMECE_AQUI.md](./docs/COMECE_AQUI.md) e [docs/SEGURANCA.md](./docs/SEGURANCA.md).
-5. Peça: **"Implemente a aplicação descrita no repositório, respeitando o AGENTS.md e a especificação integral. Desenvolva, teste, documente; não publique em produção sem aprovação."**
+Escolha **Explorar demonstração**. Ela não precisa de Supabase, não grava no localStorage e descarta alterações ao sair. Dados autenticados usam PostgreSQL/Supabase via comandos transacionais e RLS; não há fallback silencioso para demonstração depois do login.
 
-## Escopo essencial
+Para integrar um Supabase de desenvolvimento, siga [DEPLOY.md](docs/DEPLOY.md), copie `.env.example` para `.env.local` e use somente URL/chave publicável no frontend. Credenciais administrativas ficam exclusivamente no servidor. Não executar comandos remotos/deploy sem autorização.
 
-- Finanças pessoais privadas e orçamento Casa compartilhado.
-- Salários previstos, reais e entradas extras; contas recorrentes variáveis.
-- Cartões por banco, fechamento/vencimento e faturas, titular e usuário autorizado distintos.
-- Transferência/reembolso entre familiares e confirmação separada do pagamento da fatura.
-- Empréstimos existentes: número total, valor das parcelas, primeira data, última parcela paga, data efetiva, status desconhecido e atrasos.
-- Compras parceladas com ou sem juros; dívida vencida não desaparece ao trocar de mês.
-- VA e VR com saldos, recargas e compras que contam ou não como contribuição flexível à Casa.
-- PWA dark-first, acessível, simples para celular e familiares pouco habituados a sistemas.
-- Supabase com RLS, autenticação por nome de usuário mediada por serviço seguro, backups, testes automatizados.
+## Verificar
 
-A stack (React/TypeScript, Supabase/PostgreSQL e PWA) é uma preferência definida na especificação e pode ser refinada pelo Codex com justificativa.
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+No ambiente cloud com Chromium existente, use `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e`. A suíte PWA usa o build, portanto execute `build` antes. `npm run test:db` usa PostgreSQL WASM/PGlite real com roles/RLS locais. `npm run test:rls` usa pgTAP no Supabase local iniciado. Evidências e limitações estão em [TEST_PLAN.md](docs/TEST_PLAN.md).
+
+## Organização
+
+- `src/domain`: dinheiro, datas, cronogramas, projeções, saldos, estados e contribuições.
+- `src/data`: repositórios separados de demonstração e Supabase, comandos e validações locais.
+- `src/App.tsx`: rotas, formulários e interface acessível.
+- `supabase/migrations`: modelo, permissões, comandos ACID, identidade e snapshot de leitura.
+- `supabase/functions/identity`: adaptação segura username → Supabase Auth.
+- `tests`: domínio, integração PostgreSQL/RLS e E2E desktop/mobile/PWA.
+- `scripts`: bootstrap administrativo explícito, backup local e geração de cache seguro.
+- `.github/workflows/ci.yml`: lint, tipos, testes, build e E2E, sem deploy e sem artifacts financeiros.
+
+## Guias
+
+- [Relatório e acesso à homologação](docs/HOMOLOGACAO.md)
+- [Revisão de Meu espaço e Casa: comparação, correções e pendências](docs/REVISAO_MEU_ESPACO_CASA.md)
+- [Guia para familiares](docs/GUIA_FAMILIA.md)
+- [Produto e decisões de arquitetura](docs/PRODUCT_SPEC.md)
+- [Regras financeiras](docs/FINANCIAL_RULES.md)
+- [Modelo de dados](docs/DATA_MODEL.md)
+- [Segurança](docs/SECURITY.md)
+- [Supabase, publicação futura e backups](docs/DEPLOY.md)
+- [Testes e evidências](docs/TEST_PLAN.md)
+
+O contrato integral original permanece em [ESPECIFICACAO_CODEX.md](docs/ESPECIFICACAO_CODEX.md). O administrador da Casa não tem acesso automático a salários, saldos ou contratos pessoais. Não há integração bancária automática, cálculo de CET inventado ou confirmação presumida de pagamentos.

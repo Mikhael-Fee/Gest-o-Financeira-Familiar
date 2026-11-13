@@ -1,0 +1,3 @@
+-- Intentionally no production identities or default passwords.
+-- The browser's isolated demo is seeded by src/data/store.ts.
+-- SQL regression tests generate only fictitious identities in their own database.

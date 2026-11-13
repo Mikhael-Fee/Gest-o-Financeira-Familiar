@@ -29,3 +29,11 @@ backups/
 exports/
 *.sqlite
 *.db
+
+# Ferramentas locais e evidências de testes (podem conter dados privados)
+test-results/
+playwright-report/
+supabase/.temp/
+supabase/.branches/
+*.tsbuildinfo
+supabase/functions/identity/handler.generated.js
