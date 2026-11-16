@@ -15,10 +15,14 @@ const username = z
 const password = z
   .string()
   .min(12)
-  .max(128)
+  .max(72)
   .refine(
     (v) => /[a-z]/.test(v) && /[A-Z]/.test(v) && /[0-9]/.test(v),
     "Senha fraca",
+  )
+  .refine(
+    (v) => new TextEncoder().encode(v).length <= 72,
+    "Senha excede o limite do provedor",
   );
 const hash = async (value: string) =>
   Array.from(

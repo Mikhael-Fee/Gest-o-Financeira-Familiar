@@ -15,7 +15,7 @@ Este documento complementa `SEGURANCA.md`. O repositório é público; somente e
 
 A Edge Function `identity` adapta username a uma identidade Supabase Auth com e-mail técnico `member-UUID@DOMINIO_CONTROLADO`. O domínio é pré-requisito operacional; não usar domínio de terceiros nem presumir entrega de e-mail. Não depende de SMTP para provisionamento administrativo com confirmação explícita.
 
-Username é único, minúsculo, `[a-z0-9_]{3,32}`. Senha nova tem 12–128 caracteres, maiúscula, minúscula e número. Não há senha padrão. Primeiro admin é criado somente pelo operador com `scripts/bootstrap.mjs`; o banco recusa um segundo bootstrap.
+Username é único, minúsculo, `[a-z0-9_]{3,32}`. Senha nova tem 12–72 caracteres (até 72 bytes UTF-8, conforme o provedor), maiúscula, minúscula e número. Não há senha padrão. Primeiro admin é criado somente pelo operador com `scripts/bootstrap.mjs`; o banco recusa um segundo bootstrap.
 
 Cadastro aberto fica desabilitado. Convites têm 256 bits aleatórios, hash SHA-256 no banco, uso único, expiração (48h para cadastro; 20min para recuperação) e autorização do admin. Reivindicar o convite o bloqueia contra concorrência. Se o provisionamento externo falhar, o convite fica bloqueado por segurança e o admin emite outro; não reutilizar manualmente tokens antigos.
 

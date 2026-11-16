@@ -85,7 +85,7 @@ let completed = false;
 try {
   // Temporary test credential is never delivered to the owner. An optional
   // private checkpoint permits recovery if validation is interrupted.
-  const temporary = `Aa9_${crypto.randomUUID()}_${crypto.randomUUID()}`;
+  const temporary = `Aa9_${crypto.randomUUID()}`;
   const email = `member-${crypto.randomUUID()}@${domain}`;
   const { data, error } = await client.auth.admin.createUser({
     email,
@@ -160,7 +160,7 @@ try {
   }
   const { error: invalidateError } = await client.auth.admin.updateUserById(
     authId,
-    { password: `Aa9_${crypto.randomUUID()}_${crypto.randomUUID()}` },
+    { password: `Aa9_${crypto.randomUUID()}` },
   );
   if (invalidateError)
     throw Error(

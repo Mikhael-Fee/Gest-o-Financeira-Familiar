@@ -81,6 +81,13 @@ try {
   check(invitation.status === 200 && invitation.data.token);
   const username = `member_${crypto.randomUUID().slice(0, 8)}`,
     password = `LocalBb8_${crypto.randomUUID()}`;
+  step = "senha acima do limite do provedor não consome convite";
+  const longPassword = await authCall("invite", {
+    username,
+    password: "Aa9_" + "x".repeat(69),
+    token: invitation.data.token,
+  });
+  check(longPassword.status === 400 && !longPassword.data.session);
   step = "cadastro convidado";
   const invited = await authCall("invite", {
     username,

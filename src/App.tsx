@@ -222,6 +222,7 @@ function Auth({
               type="password"
               required
               minLength={mode === "login" ? 1 : 12}
+              maxLength={mode === "login" ? undefined : 72}
               autoComplete={
                 mode === "login" ? "current-password" : "new-password"
               }
