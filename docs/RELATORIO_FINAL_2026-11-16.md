@@ -59,7 +59,7 @@ A implementação foi preservada no commit local `fbb0fa4497f5452b2cdd0e4581024d
 
 ## Administrador e início de uso
 
-**Usuário `mikhael` ainda não provisionado.** Não foi testada autenticação pública desse usuário. O proprietário pode explorar a demonstração existente, mas ela não é uma conta autenticada e descarta alterações.
+**Administrador do proprietário ainda não provisionado nesta etapa histórica.** Não foi testada autenticação pública desse usuário. O proprietário pode explorar a demonstração existente, mas ela não é uma conta autenticada e descarta alterações.
 
 Para desenvolver esta versão local: Node24, `npm ci`, `npm run dev`; escolher Explorar demonstração. Os novos recursos pessoais ficam em Planejamento e Início; importação em Movimentações; tutorial/tags/acesso em Configurações. As guias da interface ainda precisam revisão final de acessibilidade/usabilidade com a suíte de navegador consolidada.
 
