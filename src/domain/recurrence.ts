@@ -1,3 +1,4 @@
+import { cardDueAt } from "./cards";
 import { z } from "zod";
 import {
   addMonths,
@@ -201,7 +202,9 @@ export function applyRecurrenceCommand(
     )
       throw Error("Responsável não autorizado.");
     const occurred = date.parse(p.occurred_on),
-      first = date.parse(p.first_due);
+      first = p.use_card_calendar
+        ? cardDueAt(card, n, String(p.occurred_on))
+        : date.parse(p.first_due);
     if (occurred > today())
       throw Error("A compra não pode ser confirmada no futuro.");
     const entry = {
@@ -252,7 +255,9 @@ export function applyRecurrenceCommand(
         family_id: user.family_id,
         description: `${entry.description} · ${i + 1}/${amounts.length}`,
         amount,
-        due_on: addMonths(first, i),
+        due_on: p.use_card_calendar
+          ? cardDueAt(card, n, occurred, i)
+          : addMonths(first, i),
         house: entry.house,
         confirmed: known?.amount ?? 0,
         unknown: !known && addMonths(first, i) < today(),

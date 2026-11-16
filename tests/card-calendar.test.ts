@@ -4,6 +4,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { cardLimit } from "../src/domain/cards";
 import { emptyState } from "../src/domain/finance";
+import { apply } from "../src/data/store";
+import { cardDueAt } from "../src/domain/cards";
 const a = "00000000-0000-4000-8000-000000000001",
   b = "00000000-0000-4000-8000-000000000002",
   fam = "00000000-0000-4000-8000-000000000010",
@@ -162,4 +164,223 @@ it("limite usa passivo ainda aberto, sem contar pagamentos ou transporte duas ve
   expect(cardLimit(c, state)).toEqual({ committed: 15000, available: 85000 });
   state.obligations[0].replaced_by = "new";
   expect(cardLimit(c, state).committed).toBe(0);
+});
+it("reservas de metas e de várias obrigações compartilham o saldo sem criar caixa", async () => {
+  const account = crypto.randomUUID(),
+    goal = crypto.randomUUID();
+  await command(a, "account", {
+    id: account,
+    name: "Fictícia",
+    kind: "bank",
+    opening: 100000,
+    cutoff: "2026-01-01",
+  });
+  for (const name of ["bill-1", "bill-2"])
+    await db.query(
+      `insert into public.obligations(id,owner_id,family_id,description,amount,due_on) values($1,$2,$3,'Teste',50000,'2026-12-20')`,
+      [name, a, fam],
+    );
+  await command(a, "savings_goal", {
+    id: goal,
+    name: "Reserva",
+    kind: "emergency",
+    target: 200000,
+    initial: 60000,
+    account_id: account,
+    created_on: "2026-10-01",
+    active: true,
+    version: 0,
+  });
+  await expect(
+    command(a, "reserve_obligation", {
+      obligation_id: "bill-1",
+      account_id: account,
+      amount: 50000,
+      version: 0,
+    }),
+  ).rejects.toThrow(/Combined reservations/);
+  await command(a, "reserve_obligation", {
+    obligation_id: "bill-1",
+    account_id: account,
+    amount: 40000,
+    version: 0,
+  });
+  await expect(
+    command(a, "reserve_obligation", {
+      obligation_id: "bill-2",
+      account_id: account,
+      amount: 1,
+      version: 0,
+    }),
+  ).rejects.toThrow(/Combined reservations/);
+  await expect(
+    command(a, "savings_move", {
+      id: crypto.randomUUID(),
+      goal_id: goal,
+      amount: 1,
+      direction: "deposit",
+      occurred_on: "2026-10-01",
+      reason: "Teste conjunto",
+      version: 1,
+    }),
+  ).rejects.toThrow(/Combined reservations/);
+  expect(
+    (
+      await db.query(
+        "select count(*)::int n from savings_movements where goal_id=$1",
+        [goal],
+      )
+    ).rows[0],
+  ).toMatchObject({ n: 0 });
+  expect(
+    (await db.query("select opening from accounts where id=$1", [account]))
+      .rows[0],
+  ).toMatchObject({ opening: 100000 });
+  await command(a, "pay", {
+    obligation_id: "bill-1",
+    account_id: account,
+    amount: 40000,
+    paid_on: "2026-10-10",
+    version: 1,
+  });
+  await command(a, "reserve_obligation", {
+    obligation_id: "bill-1",
+    account_id: account,
+    amount: 0,
+    version: 1,
+  });
+});
+it("demonstração rejeita a mesma reserva conjunta sem mutação parcial", () => {
+  const s = emptyState(),
+    user = { id: "a", family_id: "f", name: "A" };
+  s.accounts = [
+    {
+      id: "bank",
+      owner_id: "a",
+      name: "Fictícia",
+      kind: "bank",
+      opening: 100000,
+      cutoff: "2026-01-01",
+    },
+  ];
+  s.obligations = [
+    {
+      id: "bill",
+      owner_id: "a",
+      family_id: "f",
+      description: "Conta",
+      amount: 50000,
+      due_on: "2026-12-20",
+      house: false,
+      confirmed: 0,
+      unknown: false,
+      plan_id: null,
+      number: null,
+      card_id: null,
+      replaced_by: null,
+      version: 1,
+    },
+  ];
+  const withGoal = apply(
+    s,
+    {
+      key: "g",
+      type: "savings_goal",
+      payload: {
+        id: "g",
+        name: "Reserva",
+        kind: "emergency",
+        target: 200000,
+        initial: 60000,
+        account_id: "bank",
+        created_on: "2026-10-01",
+        active: true,
+        version: 0,
+      },
+    },
+    user,
+  );
+  expect(() =>
+    apply(
+      withGoal,
+      {
+        key: "r",
+        type: "reserve_obligation",
+        payload: {
+          obligation_id: "bill",
+          account_id: "bank",
+          amount: 50000,
+          version: 0,
+        },
+      },
+      user,
+    ),
+  ).toThrow(/reservas/);
+  expect(withGoal.obligation_reservations ?? []).toHaveLength(0);
+});
+it("compra detalhada usa exceções de cada ciclo, sem propagar dias excepcionais", async () => {
+  await command(a, "card_cycle", {
+    card_id: card,
+    month: "2026-11",
+    closing_on: "2026-11-05",
+    due_on: "2026-11-20",
+    version: 0,
+    reason: "Calendário do banco",
+  });
+  const id = crypto.randomUUID();
+  await command(a, "purchase_v2", {
+    id,
+    card_id: card,
+    description: "Parcelas variáveis",
+    occurred_on: "2026-10-06",
+    first_due: "2026-10-01",
+    use_card_calendar: true,
+    amounts: [10000, 11000, 12000],
+    original_amount: 30000,
+    interest_kind: "included",
+    category: "Outros",
+    house: false,
+    consumer_id: a,
+    responsible_id: a,
+    history: [],
+  });
+  const rows = (
+    await db.query<{ due_on: string; amount: number }>(
+      "select due_on::text,amount from obligations where id like $1 order by number",
+      [id + ":%"],
+    )
+  ).rows;
+  expect(rows).toEqual([
+    { due_on: "2026-10-19", amount: 10000 },
+    { due_on: "2026-11-20", amount: 11000 },
+    { due_on: "2026-12-15", amount: 12000 },
+  ]);
+  const state = emptyState();
+  state.card_cycles = [
+    {
+      card_id: card,
+      month: "2026-10",
+      closing_on: "2026-10-07",
+      due_on: "2026-10-19",
+      version: 1,
+    },
+    {
+      card_id: card,
+      month: "2026-11",
+      closing_on: "2026-11-05",
+      due_on: "2026-11-20",
+      version: 1,
+    },
+  ];
+  const c = {
+    id: card,
+    owner_id: a,
+    name: "Teste",
+    closing: 5,
+    due: 15,
+    authorized: [],
+  };
+  expect(
+    [0, 1, 2].map((index) => cardDueAt(c, state, "2026-10-06", index)),
+  ).toEqual(rows.map((r) => r.due_on));
 });

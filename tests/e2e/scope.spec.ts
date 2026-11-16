@@ -53,7 +53,7 @@ test("navegação identifica Casa e contas pessoais de forma coerente", async ({
     page.getByRole("button", { name: "Meu espaço", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page.getByText("Inter · conta principal", { exact: true }),
+    page.getByRole("heading", { name: "Inter · conta principal", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Casa", exact: true }).click();
   await expect(page).toHaveURL(/\/casa$/);

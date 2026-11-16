@@ -43,3 +43,7 @@ Não há objetos de Storage/anexos nesta versão. Portanto nenhuma política abe
 Tags e beneficiário são metadados do lançamento, separados de categoria, consumidor e responsável. Envios rejeitados/confirmados/estornados preservam datas distintas no histórico de acertos.
 
 `entries.salary_month` separa competência salarial da data de recebimento. `plans.first_due` aceita ausência somente com âncora explícita `next_number`/`next_due`; `last_paid_known` distingue ausência de informação de nenhuma parcela paga. Obrigações de contrato podem ter `due_on` desconhecido, permanecendo visíveis sem serem atribuídas artificialmente a um mês.
+
+## Ampliação de planejamento e acesso
+
+As migrations 012–020 acrescentam personal_budgets, savings_goals/savings_movements, future_receipts, account_checks, obligation_reservations, card_cycles, tags_catalog/import_records e family_advances/advance_allocations. Todas usam RLS e GRANTs de leitura mínima. Recorrências e contratos recebem versões, periodicidade e metadados opcionais; entradas preservam valores originais e meios de pagamento. Identidade possui comandos privados idempotentes para revogação, desativação e alteração de username. A migration020 combina reservas e unifica o calendário por ciclo sem alterar migrations anteriores.

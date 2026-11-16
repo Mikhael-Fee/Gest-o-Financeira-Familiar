@@ -21,7 +21,7 @@ Cadastro aberto fica desabilitado. Convites têm 256 bits aleatórios, hash SHA-
 
 Login retorna mensagem genérica e chama Auth inclusive para username inexistente. Rate limit persistente por identidade e global, em janela de 15min, complementa limites do Supabase Auth. O limite global é conservador para uma família; não é proteção de borda contra DDoS. Antes de produção, configure limites do provedor e monitore bloqueios sem registrar senhas/tokens.
 
-Na recuperação, o admin cria o código mas não escolhe/vê a senha. Sessões Auth persistidas são removidas ao finalizar; JWTs de acesso já emitidos podem durar até a expiração configurada de 15 minutos. Desativar `profiles.active` também bloqueia leituras/comandos protegidos imediatamente por RLS. Mudança de username/desativação ainda são operações de suporte, sem tela dedicada.
+Na recuperação, o admin cria o código mas não escolhe/vê a senha. Sessões Auth persistidas são removidas ao finalizar; JWTs de acesso já emitidos podem durar até a expiração configurada de 15 minutos. Desativar `profiles.active` também bloqueia leituras/comandos protegidos imediatamente por RLS. Mudança do próprio username, revogação de convites e desativação/reativação de membros possuem tela e endpoint servidor dedicado; o banco impede desativar o próprio ou último administrador.
 
 ## Sessões e browser
 

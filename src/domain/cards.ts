@@ -1,4 +1,11 @@
-import { cents, date, remaining, type Card, type State } from "./finance";
+import {
+  addMonths,
+  cents,
+  date,
+  remaining,
+  type Card,
+  type State,
+} from "./finance";
 import type { Command, Identity } from "../data/store";
 export type CardCycle = {
   card_id: string;
@@ -7,6 +14,37 @@ export type CardCycle = {
   due_on: string;
   version: number;
 };
+/** Cycle months are advanced independently so one bank exception does not change later due days. */
+export function cardDueAt(
+  card: Card,
+  state: State,
+  purchase: string,
+  index = 0,
+) {
+  date.parse(purchase);
+  let cycle = purchase.slice(0, 7) + "-01";
+  const day = (month: string, number: number) => {
+    const [y, m] = month.split("-").map(Number);
+    return (
+      month.slice(0, 7) +
+      "-" +
+      String(
+        Math.min(number, new Date(Date.UTC(y, m, 0)).getUTCDate()),
+      ).padStart(2, "0")
+    );
+  };
+  const exception = (month: string) =>
+    state.card_cycles?.find(
+      (c) => c.card_id === card.id && c.month === month.slice(0, 7),
+    );
+  if (purchase > (exception(cycle)?.closing_on ?? day(cycle, card.closing)))
+    cycle = addMonths(cycle, 1);
+  cycle = addMonths(cycle, index);
+  const override = exception(cycle);
+  if (override) return override.due_on;
+  if (card.due <= card.closing) cycle = addMonths(cycle, 1);
+  return day(cycle, card.due);
+}
 export function cardLimit(card: Card, state: State) {
   const committed = state.obligations
     .filter((o) => o.card_id === card.id)

@@ -20,6 +20,7 @@ export function RecurrenceManager({
   onCommand,
   house = false,
 }: Props) {
+  const [autoCalendar, setAutoCalendar] = useState(true);
   const [mode, setMode] = useState("create"),
     [ruleId, setRuleId] = useState("");
   const [occurrenceId, setOccurrenceId] = useState(""),
@@ -141,6 +142,7 @@ export function RecurrenceManager({
           amounts,
           original_amount: sum.original,
           first_due: first,
+          use_card_calendar: autoCalendar,
           occurred_on: purchaseDate,
           card_id: cardId,
           consumer_id: user.id,
@@ -331,6 +333,17 @@ export function RecurrenceManager({
                 <option key={`${name}:${i}`} value={name} />
               ))}
             </datalist>
+            {mode === "purchase" && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={autoCalendar}
+                  onChange={(e) => setAutoCalendar(e.target.checked)}
+                />{" "}
+                Usar fechamento e vencimento do cartão (incluindo exceções).
+                Desmarque para informar calendário histórico.
+              </label>
+            )}
             <Field
               label={
                 mode === "purchase"

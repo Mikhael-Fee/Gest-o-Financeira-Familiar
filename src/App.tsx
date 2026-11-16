@@ -1021,7 +1021,7 @@ export default function App() {
               />
             </label>
           </div>
-          {loading ? (
+          {loading && state.profiles.length === 0 ? (
             <p role="status">Carregando seus dados…</p>
           ) : (
             <Routes>

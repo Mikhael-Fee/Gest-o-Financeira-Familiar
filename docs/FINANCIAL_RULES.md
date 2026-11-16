@@ -28,7 +28,7 @@ Transporte/renegociação liga origens às novas obrigações. Exemplo: 800 ante
 
 ## Acertos e Casa
 
-Pix informado é pendente. Somente o credor confirma, com conta de destino e data de recebimento. Os movimentos nas duas contas são criados na confirmação, com datas de envio/recebimento preservadas. A fatura continua aberta até sua baixa independente. Envios pendentes podem ser rejeitados com motivo, sem movimentar caixa. Uma confirmação incorreta pode ser estornada pelo credor: os dois movimentos são corrigidos e o acerto reabre, com original preservado. A API recusa excedentes; ainda não existe carteira de adiantamentos familiares.
+Pix informado é pendente. Somente o credor confirma, com conta de destino e data de recebimento. Os movimentos nas duas contas são criados na confirmação, com datas de envio/recebimento preservadas. A fatura continua aberta até sua baixa independente. Envios pendentes podem ser rejeitados com motivo, sem movimentar caixa. Uma confirmação incorreta pode ser estornada pelo credor: os dois movimentos são corrigidos e o acerto reabre, com original preservado. Acertos vinculados continuam limitados à obrigação; excedentes são registrados no ledger próprio de adiantamentos familiares, com confirmação, compensação auditada e estorno, sem criar renda nem pagar fatura automaticamente.
 
 A Casa não atribui um responsável permanente ao cadastrar uma conta; cada baixa identifica pagador. Uma obrigação compartilhada aceita pagamentos por membros autorizados da mesma Casa. Os identificadores das contas não permitem consultar saldos ou nomes privados.
 
@@ -43,3 +43,11 @@ Acordo de renegociação guarda data efetiva separada do primeiro novo venciment
 A previsão é privada e admite ajuste para um mês específico. Alterar também a referência futura cria uma vigência a partir do mês escolhido, preservando a referência anterior e os ajustes de outros meses. Isso não cria receita, saldo nem confirmação de recebimento.
 
 Recebimentos têm competência salarial separada da data efetiva de caixa. O valor confirmado substitui a previsão daquela competência no planejamento; extras permanecem separados. Correção exige a versão atual, conta bancária/dinheiro própria e data efetiva não futura, atualiza o registro uma vez e preserva antes/depois na auditoria. Versão ausente, nula ou antiga é recusada. VA/VR não recebe salário nem crédito de empréstimo.
+
+## Planejamento pessoal, calendário e importação (16/11)
+
+Orçamentos usam consumo do próprio usuário e excluem a parte Casa e pagamentos de fatura. Metas de economia apenas separam dinheiro declarado: aportes/retiradas não geram movimento bancário. A soma de metas vinculadas e reservas de obrigações não pode exceder o saldo registrado da mesma conta; uma obrigação paga/cancelada/renegociada não mantém uma cobrança em dobro no disponível. O disponível mantém previsões fora do caixa confirmado, diferencia VA/VR e aponta dados incompletos.
+
+Calendários automáticos avaliam a exceção de cada ciclo independentemente: um vencimento excepcional em outubro não muda o dia padrão de dezembro. Compras históricas podem preservar um primeiro vencimento explicitamente informado.
+
+Importações exigem prévia e confirmação, preservam a identidade da linha original mesmo quando corrigida e não duplicam movimentos ao importar novamente. Pix/transferências, pagamento de obrigação e receita operacional exigem classificações distintas; pagamento de fatura não vira consumo importado.

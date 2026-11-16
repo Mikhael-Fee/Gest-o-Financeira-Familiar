@@ -1,6 +1,6 @@
 // Isolated LOCAL rehearsal only. Never accepts a remote connection string.
 import { spawn } from "node:child_process";
-import { createReadStream, readFileSync } from "node:fs";
+import { createReadStream, readFileSync, writeFileSync } from "node:fs";
 import assert from "node:assert/strict";
 const dump = process.argv[2];
 if (!dump) throw Error("Informe o caminho privado do dump local.");
@@ -24,10 +24,21 @@ async function docker(args, input) {
     );
     let output = "";
     child.stdout.on("data", (v) => (output += v));
-    child.stderr.on("data", () => {});
+    let diagnostic = "";
+    child.stderr.on("data", (v) => (diagnostic += v));
     child.on("error", reject);
     child.on("close", (code) =>
-      code === 0 ? resolve(output) : reject(Error("Operação local recusada.")),
+      code === 0
+        ? resolve(output)
+        : (() => {
+            if (process.env.RESTORE_DIAGNOSTIC_FILE)
+              writeFileSync(
+                process.env.RESTORE_DIAGNOSTIC_FILE,
+                diagnostic + output,
+                { mode: 0o600 },
+              );
+            reject(Error("Operação local recusada."));
+          })(),
     );
     if (input?.file) createReadStream(input.file).pipe(child.stdin);
     else child.stdin.end(input || "");
@@ -88,9 +99,23 @@ try {
     "audit_logs",
     "income_months",
     "income_references",
+    "personal_budgets",
+    "savings_goals",
+    "savings_movements",
+    "future_receipts",
+    "account_checks",
+    "obligation_reservations",
+    "card_cycles",
+    "tags_catalog",
+    "import_records",
+    "family_advances",
+    "advance_allocations",
   ];
   const parts = tables
-    .map((t) => `'${t}',(select count(*) from public.${t})`)
+    .map(
+      (t) =>
+        `'${t}',(select jsonb_build_object('count',count(*),'digest',md5(coalesce(string_agg(to_jsonb(t)::text,E'\\n' order by to_jsonb(t)::text),''))) from public.${t} t)`,
+    )
     .join(",");
   const query = `select jsonb_build_object(${parts},'users',(select count(*) from auth.users),'identity_integrity',(select md5(string_agg(id::text||coalesce(encrypted_password,''),',' order by id)) from auth.users))::text`;
   stage = "comparar dados e identidades";
@@ -100,7 +125,7 @@ try {
   );
   await sql(
     database,
-    "create schema if not exists extensions;grant usage on schema extensions to authenticated",
+    "create schema if not exists extensions;grant usage on schema extensions to authenticated,anon",
   );
   stage = "verificar RLS após restaurar";
   const result = await docker(
@@ -117,12 +142,16 @@ try {
       "-v",
       "ON_ERROR_STOP=1",
     ],
-    readFileSync("supabase/tests/access.test.sql", "utf8"),
+    readFileSync("supabase/tests/access.test.sql", "utf8") +
+      "\n" +
+      readFileSync("supabase/tests/planning.test.sql", "utf8"),
   );
-  assert.equal((result.match(/^ok \d+/gm) || []).length, 15);
+  if (process.env.RESTORE_DIAGNOSTIC_FILE)
+    writeFileSync(process.env.RESTORE_DIAGNOSTIC_FILE, result, { mode: 0o600 });
+  assert.equal((result.match(/^ok \d+/gm) || []).length, 27);
   assert(!/^not ok /m.test(result));
   console.log(
-    "Restauração local aprovada: contagens financeiras, integridade das identidades Auth e 15 verificações RLS.",
+    "Restauração local aprovada: contagens financeiras, integridade das identidades Auth e 27 verificações RLS.",
   );
 } catch {
   console.error(

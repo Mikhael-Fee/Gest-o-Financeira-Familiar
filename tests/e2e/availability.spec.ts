@@ -10,6 +10,9 @@ async function open(page: import("@playwright/test").Page) {
     .locator("aside")
     .getByRole("link", { name: "Relatórios", exact: true })
     .click();
+  await expect(
+    page.getByRole("heading", { name: "Seus relatórios", exact: true }),
+  ).toBeVisible();
 }
 test("disponível mantém caixa separado de previsão, permite confirmar e isola Casa", async ({
   page,

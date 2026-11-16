@@ -5,7 +5,7 @@ import { applyRecurrenceCommand } from "../domain/recurrence";
 import { applyIncomePlanning } from "./incomePlanning";
 import { validateIncomeScenario } from "../domain/availability";
 import { applyImportTags } from "../domain/import";
-import { applyCardSettings } from "../domain/cards";
+import { applyCardSettings, cardDueAt } from "../domain/cards";
 import { createClient } from "@supabase/supabase-js";
 import {
   balance,
@@ -14,7 +14,6 @@ import {
   emptyState,
   remaining,
   schedule,
-  statementDate,
   addMonths,
   today,
   installmentAmounts,
@@ -104,6 +103,54 @@ export const demoIdentity: Identity = {
 };
 export const id = () => crypto.randomUUID();
 export function apply(s: State, c: Command, user: Identity): State {
+  const next = applyCore(s, c, user);
+  if (
+    [
+      "savings_goal",
+      "savings_move",
+      "savings_reverse",
+      "reserve_obligation",
+    ].includes(c.type)
+  ) {
+    for (const account of next.accounts.filter(
+      (a) => a.owner_id === user.id && ["bank", "cash"].includes(a.kind),
+    )) {
+      const savings = next.savings_goals
+        .filter(
+          (g) =>
+            g.owner_id === user.id && g.active && g.account_id === account.id,
+        )
+        .reduce(
+          (sum, g) =>
+            sum +
+            g.initial +
+            next.savings_movements
+              .filter((m) => m.goal_id === g.id && m.occurred_on <= today())
+              .reduce((n, m) => n + m.amount, 0),
+          0,
+        );
+      const reserved = (next.obligation_reservations ?? [])
+        .filter((r) => r.owner_id === user.id && r.account_id === account.id)
+        .reduce((sum, r) => {
+          const obligation = next.obligations.find(
+            (o) => o.id === r.obligation_id,
+          );
+          return (
+            sum +
+            (obligation
+              ? Math.min(r.amount, remaining(obligation, next.payments))
+              : 0)
+          );
+        }, 0);
+      if (savings + reserved > Math.max(0, balance(account, next)))
+        throw Error(
+          "As reservas de metas e obrigações excedem o saldo registrado da conta.",
+        );
+    }
+  }
+  return next;
+}
+function applyCore(s: State, c: Command, user: Identity): State {
   const advanceUpdate = applyAdvanceCommand(s, c, user);
   if (advanceUpdate) return advanceUpdate;
   const loanUpdate = applyLoanDetails(s, c, user);
@@ -331,7 +378,6 @@ export function apply(s: State, c: Command, user: Identity): State {
     n.entries.push(e);
     if (e.card_id) {
       const card = n.cards.find((c) => c.id === e.card_id)!;
-      const first = statementDate(e.occurred_on, card.closing, card.due);
       const parts = installmentAmounts(e.amount, e.installments ?? 1);
       parts.forEach((amount, i) => {
         const key = `${e.id}:${i + 1}`;
@@ -341,7 +387,7 @@ export function apply(s: State, c: Command, user: Identity): State {
           family_id: user.family_id,
           description: `${e.description} · ${i + 1}/${parts.length}`,
           amount,
-          due_on: addMonths(first, i),
+          due_on: cardDueAt(card, n, e.occurred_on, i),
           house: e.house,
           confirmed: 0,
           unknown: false,

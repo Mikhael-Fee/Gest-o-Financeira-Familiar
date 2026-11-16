@@ -5,7 +5,11 @@ import { URLSearchParams } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { open, realpath, rm } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
-import { verifyAdminBrowser } from "./verify-admin-browser.mjs";
+import {
+  verifyAdminBrowser,
+  verifyActivationBrowser,
+} from "./verify-admin-browser.mjs";
+import { verifyHomologationApi } from "./verify-homologation-api.mjs";
 const required = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -34,6 +38,13 @@ if (
   throw Error("Projeto fora do escopo autorizado.");
 if (!local && domain !== origin.hostname)
   throw Error("Use o domínio técnico controlado desta homologação.");
+if (
+  !local &&
+  (!process.env.SUPABASE_PUBLIC_KEY || !process.env.HOMOLOGATION_FIXTURE_FILE)
+)
+  throw Error(
+    "Chave publicável e caminho privado de evidência são necessários para homologar a API real.",
+  );
 if (origin.pathname !== "/" || origin.search || origin.hash)
   throw Error("Origem inválida.");
 const checkout = await realpath(new URL("..", import.meta.url));
@@ -50,6 +61,21 @@ if (
 )
   throw Error("Arquivo de ativação deve ficar fora do repositório.");
 const output = await open(destination, "wx", 0o600);
+let checkpoint;
+if (process.env.OPERATOR_STATE_FILE) {
+  const checkpointPath = resolve(process.env.OPERATOR_STATE_FILE);
+  const checkpointParent = await realpath(dirname(checkpointPath));
+  const relation = relative(checkout, checkpointParent);
+  if (
+    !isAbsolute(process.env.OPERATOR_STATE_FILE) ||
+    !relation ||
+    (!relation.startsWith(`..${sep}`) &&
+      relation !== ".." &&
+      !isAbsolute(relation))
+  )
+    throw Error("Checkpoint privado deve ficar fora do checkout.");
+  checkpoint = await open(checkpointPath, "wx", 0o600);
+}
 const client = createClient(
   service.origin,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -57,8 +83,8 @@ const client = createClient(
 );
 let completed = false;
 try {
-  // This random password never leaves memory; the owner chooses their own using
-  // the same audited single-use recovery flow as ordinary members.
+  // Temporary test credential is never delivered to the owner. An optional
+  // private checkpoint permits recovery if validation is interrupted.
   const temporary = `Aa9_${crypto.randomUUID()}_${crypto.randomUUID()}`;
   const email = `member-${crypto.randomUUID()}@${domain}`;
   const { data, error } = await client.auth.admin.createUser({
@@ -78,6 +104,12 @@ try {
     await client.auth.admin.deleteUser(authId);
     throw Error("Bootstrap recusado; não substitua identidades existentes.");
   }
+  if (checkpoint) {
+    await checkpoint.writeFile(
+      JSON.stringify({ auth_id: authId, username: login, password: temporary }),
+    );
+    await checkpoint.sync();
+  }
   const { data: profile, error: profileError } = await client
     .from("profiles")
     .select("id,role,active")
@@ -93,6 +125,35 @@ try {
       username: login,
       password: temporary,
     });
+    const evidence = await verifyHomologationApi({
+      url: service.origin,
+      origin: origin.origin,
+      publicKey: process.env.SUPABASE_PUBLIC_KEY,
+      username: login,
+      password: temporary,
+      fixturePath: process.env.HOMOLOGATION_FIXTURE_FILE,
+    });
+    console.log(
+      "API pública real validada: quatro usuários, convites, recuperação, RLS e fluxos financeiros.",
+    );
+    if (!evidence.four_authenticated_users)
+      throw Error("Homologação multiusuário incompleta.");
+    await verifyAdminBrowser({
+      origin: origin.origin,
+      username: login,
+      password: temporary,
+      withFinancialData: true,
+    });
+    await verifyActivationBrowser({
+      origin: origin.origin,
+      username: login,
+      password: temporary,
+      publicKey: process.env.SUPABASE_PUBLIC_KEY,
+      fixturePath: process.env.HOMOLOGATION_FIXTURE_FILE,
+    });
+    console.log(
+      "Ativação pública por link, senha escolhida, fragmento removido e reuso negado validados com usuário fictício.",
+    );
     console.log(
       "Login público real, Meu espaço, Casa, Configurações, convite e saída/recarga validados.",
     );
@@ -135,6 +196,10 @@ try {
       : "Administrador confirmado e login público real validado; ativação gravada no arquivo privado solicitado.",
   );
 } finally {
+  if (checkpoint) {
+    await checkpoint.close();
+    if (completed) await rm(process.env.OPERATOR_STATE_FILE, { force: true });
+  }
   await output.close();
   if (!completed) await rm(destination, { force: true });
 }
