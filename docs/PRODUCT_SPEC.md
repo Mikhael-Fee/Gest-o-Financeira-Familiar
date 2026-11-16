@@ -1,6 +1,6 @@
 # Produto e arquitetura implementada
 
-> Atualização de 16/11/2026: a ampliação local de orçamentos/metas, disponível, histórico salarial, recorrências, importação e acesso está em revisão. As limitações descritas abaixo refletem a versão publicada anterior. Consulte [MATRIZ_DE_CONCLUSAO.md](MATRIZ_DE_CONCLUSAO.md) e [o relatório desta etapa](RELATORIO_FINAL_2026-11-16.md) para distinguir código novo, validação e pendências remotas. A ordem antiga de aguardar a homologação foi substituída pelo trabalho paralelo solicitado na missão de 16/11.
+> Atualização de 16/11/2026: implementação e homologação autenticada pública concluídas para testes com dados fictícios. Consulte [MATRIZ_DE_CONCLUSAO.md](MATRIZ_DE_CONCLUSAO.md) e [CONCLUSAO_HOMOLOGACAO.md](CONCLUSAO_HOMOLOGACAO.md) para recursos, evidências e limites operacionais.
 
 A fonte de requisitos continua sendo `ESPECIFICACAO_CODEX.md`. Esta documentação descreve decisões verificáveis no código, sem substituir o contrato original.
 

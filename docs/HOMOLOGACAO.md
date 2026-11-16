@@ -1,5 +1,7 @@
 # Relatório de homologação — 12/11/2026
 
+> Registro histórico desta etapa. A continuação de 16/11 concluiu a homologação autenticada e criou o administrador; consulte [o relatório final atualizado](CONCLUSAO_HOMOLOGACAO.md). Os bloqueios e contagens abaixo descrevem as verificações anteriores.
+
 ## Endereços e escopo
 
 - Aplicativo publicado: https://entre-nos-homologacao.netlify.app

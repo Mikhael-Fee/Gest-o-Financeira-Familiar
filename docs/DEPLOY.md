@@ -1,5 +1,15 @@
 # Supabase, desenvolvimento e publicação futura
 
+> Estado atual de homologação, commit/deploy e evidências: [CONCLUSAO_HOMOLOGACAO.md](CONCLUSAO_HOMOLOGACAO.md). As seções históricas abaixo preservam o procedimento e o estado anterior.
+
+## Publicação controlada do site existente
+
+`npm run build` gera `version.json`, `_redirects` e `_headers` para preservar commit, rotas SPA e headers também em uploads estáticos. `scripts/deploy-homologation.mjs` exige `NETLIFY_AUTH_TOKEN` seguro, aceita somente o site de homologação existente, confere a lista de arquivos, cria deploy draft, envia os digests necessários e só publica depois de `ready`. Confirma então o deploy principal e o commit público. Não é executado por instalação/CI e não configura a main como produção.
+
+O operador deve construir de uma cópia limpa versionada e fornecer somente `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` publicável e `COMMIT_REF`. Para servir/implantar identity, use o bundle gerado de `server/identity.ts`. Na CLI atual, o alvo explícito é `npx supabase functions deploy identity --remote=ovoqhnoaigjzihhpdukn --use-api --no-verify-jwt --yes`; sua autorização é própria e RLS/GRANTs não são desligados.
+
+O bootstrap remoto seguro usa `scripts/provision-admin.mjs`, com chaves somente no processo servidor, `ACTIVATION_FILE` absoluto fora do checkout, `SUPABASE_PUBLIC_KEY`, `HOMOLOGATION_FIXTURE_FILE` privado e opcional `OPERATOR_STATE_FILE` privado para recuperar uma execução interrompida. Esse script cria o primeiro administrador uma vez, confirma Auth/perfil, executa browser/API públicos reais e escreve a ativação de 20 minutos sem imprimir código ou senha. O checkpoint temporário é removido após sucesso. Não repetir bootstrap depois de existir um administrador: para código expirado, o operador autorizado deve emitir nova recuperação para o perfil existente, preservando o usuário e a família.
+
 **Nenhum deploy em produção é parte dos scripts de instalação/CI.** O proprietário autorizou homologação com dados fictícios. Produção e dados reais continuam exigindo autorização própria.
 
 ## Desenvolvimento sem credenciais

@@ -4,7 +4,7 @@ Use somente dados fictícios até a homologação e autorização para uso real.
 
 ## Primeiro acesso
 
-A administração envia um código individual. Na tela inicial, escolha **Tenho um convite**, crie username com letras minúsculas, números ou `_` e senha de pelo menos 12 caracteres, com maiúscula, minúscula e número. Não compartilhe a senha. Se o código expirar, peça outro; se esquecer a senha, solicite código de recuperação ao admin e escolha **Recuperar acesso**.
+A administração envia um código individual. Na tela inicial, escolha **Tenho um convite**, crie username com letras minúsculas, números ou `_` e senha de 12 a 72 caracteres (no máximo 72 bytes UTF-8), com maiúscula, minúscula e número. Não compartilhe a senha. Se o código expirar, peça outro; se esquecer a senha, solicite código de recuperação ao admin e escolha **Recuperar acesso**.
 
 ## Sua conta e seu salário
 
@@ -59,3 +59,11 @@ Use **Categoria do consumo** e **Fonte do consumo** para investigar os gastos. U
 **Entradas e saídas de dinheiro** acompanha movimentos reais nas suas contas, incluindo empréstimos/acertos, sem chamar tudo de salário. **Planejamento de 12 meses** compara renda e obrigações abertas; a linha tracejada mostra a diferença, que pode ficar negativa. Trocar cenário é uma simulação, sem movimentar dinheiro. Valores sem data e pendências antigas ficam abaixo, para conferir. Se quiser verificar os números em conjunto, abra **Ver dados em tabela** em cada gráfico.
 
 Confira mês, pendências antigas e mensagens “estimado/a conferir”. Para erro em baixa, use **Estornar** e explique o motivo; não registre renda extra para compensar. Exporte JSON somente em dispositivo privado. Use **Sair e limpar sessão** ao terminar, especialmente em celular compartilhado.
+
+## Planejamento pessoal e importação
+
+No Planejamento de Meu espaço, defina um orçamento por categoria/mês e acompanhe o realizado. A compra pode ultrapassar o orçamento; o aplicativo avisa, sem impedir o registro. Metas de economia/reserva são particulares e não criam dinheiro: registre apenas o que separou, com aportes, retiradas ou estornos. O disponível estimado do Início/Relatórios separa saldo, compromissos, reservas, previsões e VA/VR. Reservar não é pagar.
+
+Recorrências oferecem dias/semanas/meses e alterações de uma ocorrência, futuras ou da regra preservando o passado. Compra detalhada no cartão permite valores diferentes por parcela; marque calendário do cartão para usar suas exceções ou informe o histórico conhecido. Em Configurações, reabra o tutorial e gerencie etiquetas e convites.
+
+Em Movimentações, importe um extrato fictício CSV/OFX e confira a prévia antes de confirmar. Classifique Pix e transferências explicitamente; não chame pagamento de fatura de compra novamente. A mesma linha original não será importada duas vezes. Sem internet, o PWA abre a interface, mas entrar e registrar finanças exigem conexão.

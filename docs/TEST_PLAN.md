@@ -1,5 +1,7 @@
 # Validação executada — 13/11/2026
 
+> Registro histórico desta etapa. A continuação de 16/11 concluiu a homologação autenticada e criou o administrador; consulte [o relatório final atualizado](CONCLUSAO_HOMOLOGACAO.md). Os bloqueios e contagens abaixo descrevem as verificações anteriores.
+
 Dados exclusivamente fictícios. Resultados locais não constituem publicação, auditoria independente nem homologação de produção.
 
 ## Resultado desta entrega

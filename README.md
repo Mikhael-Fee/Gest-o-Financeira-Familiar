@@ -4,6 +4,8 @@ Aplicação React/TypeScript/PWA com núcleo financeiro em centavos inteiros, in
 
 **Versão de desenvolvimento, sem publicação em produção e sem dados reais.** Há funcionalidades do contrato original que ainda precisam de ampliação/homologação; consulte [escopo e limites](docs/PRODUCT_SPEC.md). Não interpretar uma suíte local verde como autorização para usar finanças reais.
 
+[Homologação autenticada e entrega atual](docs/CONCLUSAO_HOMOLOGACAO.md) · [Matriz de requisitos](docs/MATRIZ_DE_CONCLUSAO.md).
+
 ## Executar
 
 ```sh

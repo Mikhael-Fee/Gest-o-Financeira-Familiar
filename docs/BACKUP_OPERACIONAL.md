@@ -1,5 +1,7 @@
 # Backup e restauração operacional
 
+Ensaio repetido em 16/11 com schema ampliado: criptografia/descriptografia, restauração em banco local descartável, contagens e digests das tabelas financeiras, integridade das identidades Auth e **27 verificações pgTAP/RLS após restaurar** passaram. Antes das migrations remotas, foi preservada uma cópia lógica cifrada de tabelas/funções/histórico do projeto autorizado. Essa cópia JSON não foi descrita como dump PostgreSQL remoto integral. O destino externo e o ensaio entre provedores continuam pendentes.
+
 O plano Free não deve ser tratado como garantia de backup diário ou disponibilidade contínua. O projeto pode pausar por inatividade. Uma exportação JSON do aplicativo obedece à RLS, mas não preserva uma fotografia completa das identidades e do banco; não substitui este procedimento.
 
 ## O que preservar

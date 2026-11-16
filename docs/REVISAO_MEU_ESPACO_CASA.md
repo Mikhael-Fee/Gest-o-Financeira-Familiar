@@ -1,5 +1,7 @@
 # Revisão de Meu espaço e Casa — 13/11/2026
 
+> Registro histórico desta etapa. A continuação de 16/11 concluiu a homologação autenticada e criou o administrador; consulte [o relatório final atualizado](CONCLUSAO_HOMOLOGACAO.md). Os bloqueios e contagens abaixo descrevem as verificações anteriores.
+
 ## Resultado e limite desta etapa
 
 A revisão foi feita antes das alterações, sobre a branch `feat/aplicativo-financas-familiares`, recuperada do GitHub sem apagar o histórico. Foram lidos os documentos de produto/segurança, o roteamento e os formulários de `App.tsx`, o domínio financeiro, os seletores/gráficos, o fluxo de identidade, o bootstrap e os testes.

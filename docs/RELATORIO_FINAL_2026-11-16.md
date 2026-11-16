@@ -1,5 +1,7 @@
 # Encerramento da etapa — 16/11/2026
 
+> Registro histórico desta etapa. A continuação de 16/11 concluiu a homologação autenticada e criou o administrador; consulte [o relatório final atualizado](CONCLUSAO_HOMOLOGACAO.md). Os bloqueios e contagens abaixo descrevem as verificações anteriores.
+
 ## Resumo executivo
 
 Foi implementada uma ampliação substancial do aplicativo existente, sem reiniciar o projeto. **A missão integral ainda não está concluída e o administrador remoto não foi criado.** O usuário pediu o encerramento da etapa após os agentes serem interrompidos pelo limite de uso da plataforma. O código novo fica preservado para revisão e continuação, sem autorização de produção.
