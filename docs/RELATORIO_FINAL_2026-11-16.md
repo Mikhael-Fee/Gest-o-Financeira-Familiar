@@ -53,6 +53,8 @@ A primeira rodada consolidada de domínio encontrou uma comparação de bigint r
 
 Branch preservado: `feat/aplicativo-financas-familiares`. PR existente: https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/pull/1 . O SHA remoto inicial e do PR era `580bda8dc2034b6dde81e32e053de5b5e7f5397d`. A main não foi mesclada. O CI remoto desta ampliação não foi executado; o PR não deve ser interpretado como aprovado para merge.
 
+A implementação foi preservada no commit local `fbb0fa4497f5452b2cdd0e4581024d000a4a8bff`. Não houve push. A consulta final à API Netlify retornou `build_settings.stop_builds = false`, diferentemente da pausa descrita nos relatórios históricos. Como a versão nova ainda tem pendências de integração, não foi acionado push que pudesse disparar publicação automática. Nenhuma configuração do site foi alterada para contornar isso.
+
 ## Administrador e início de uso
 
 **Usuário `mikhael` ainda não provisionado.** Não foi testada autenticação pública desse usuário. O proprietário pode explorar a demonstração existente, mas ela não é uma conta autenticada e descarta alterações.
