@@ -8,6 +8,12 @@ import {
 } from "../domain/finance";
 import type { Command } from "../data/store";
 import { Field, Metric } from "./ui";
+import {
+  expectedSalaryDate,
+  historicalSalary,
+  type IncomeScenario,
+  type MonthlyIncome,
+} from "../domain/availability";
 type Props = {
   state: State;
   ownerId: string;
@@ -33,6 +39,17 @@ export default function SalaryPanel({
     [receiptId, setReceiptId] = useState(income.receipts[0]?.id ?? ""),
     [error, setError] = useState("");
   const requestKey = useRef(crypto.randomUUID());
+  const [forecastScenario, setForecastScenario] =
+    useState<IncomeScenario>("manual");
+  const history = historicalSalary(state, ownerId, month);
+  const baseline = incomeForMonth(
+    { ...state, income_months: [] },
+    ownerId,
+    month,
+  ).expected;
+  const savedMonth = state.income_months.find(
+    (x) => x.owner_id === ownerId && x.month === month,
+  ) as MonthlyIncome | undefined;
   const receipt =
     income.receipts.find((e) => e.id === receiptId) ?? income.receipts[0];
   function open(next: "forecast" | "receipt") {
@@ -56,7 +73,14 @@ export default function SalaryPanel({
           "income_month",
           {
             month,
-            expected: parseMoney(String(f.get("amount"))),
+            expected:
+              forecastScenario === "history"
+                ? history.amount
+                : forecastScenario === "conservative"
+                  ? baseline
+                  : parseMoney(String(f.get("amount"))),
+            scenario: forecastScenario,
+            expected_on: String(f.get("expected_on")),
             future: f.get("future") === "on",
             version: current?.version ?? 0,
             reference_version: reference?.version ?? 0,
@@ -154,6 +178,46 @@ export default function SalaryPanel({
               </select>
             </Field>
           )}
+          {mode === "forecast" && (
+            <>
+              <Field label="Método da previsão mensal">
+                <select
+                  value={forecastScenario}
+                  onChange={(e) =>
+                    setForecastScenario(e.target.value as IncomeScenario)
+                  }
+                >
+                  <option value="conservative">
+                    Conservadora · referência habitual
+                  </option>
+                  <option value="history">
+                    Histórica · reconhece aumentos recorrentes
+                  </option>
+                  <option value="manual">
+                    Manual · valor escolhido por você
+                  </option>
+                </select>
+              </Field>
+              <p>
+                {forecastScenario === "history"
+                  ? `${history.method}. Previsão: ${money(history.amount)}. Um bônus isolado não define o salário habitual.`
+                  : forecastScenario === "conservative"
+                    ? `Referência habitual: ${money(baseline)}.`
+                    : "Informe o valor esperado para esta competência."}
+              </p>
+              <Field label="Data prevista do salário">
+                <input
+                  type="date"
+                  name="expected_on"
+                  required
+                  defaultValue={
+                    savedMonth?.expected_on ??
+                    expectedSalaryDate(state, ownerId, month)
+                  }
+                />
+              </Field>
+            </>
+          )}
           <Field
             label={
               mode === "forecast"
@@ -168,12 +232,18 @@ export default function SalaryPanel({
                   : "Valor efetivamente recebido (R$)"
               }
               name="amount"
+              readOnly={mode === "forecast" && forecastScenario !== "manual"}
+              key={mode === "forecast" ? forecastScenario : receipt?.id}
               inputMode="decimal"
               required
               pattern="[0-9]+([,.][0-9]{1,2})?"
               defaultValue={String(
                 (mode === "forecast"
-                  ? income.expected
+                  ? forecastScenario === "history"
+                    ? history.amount
+                    : forecastScenario === "conservative"
+                      ? baseline
+                      : income.expected
                   : (receipt?.amount ?? 0)) / 100,
               ).replace(".", ",")}
             />

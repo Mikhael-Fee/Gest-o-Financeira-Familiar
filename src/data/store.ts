@@ -1,3 +1,11 @@
+import { applyAdvanceCommand } from "../domain/advances";
+import { applyLoanDetails } from "../domain/loans";
+import { applyPersonal } from "../domain/personal";
+import { applyRecurrenceCommand } from "../domain/recurrence";
+import { applyIncomePlanning } from "./incomePlanning";
+import { validateIncomeScenario } from "../domain/availability";
+import { applyImportTags } from "../domain/import";
+import { applyCardSettings } from "../domain/cards";
 import { createClient } from "@supabase/supabase-js";
 import {
   balance,
@@ -34,6 +42,33 @@ export const supabase =
 export type Command = {
   key: string;
   type:
+    | "card_settings"
+    | "card_cycle"
+    | "card_reassign"
+    | "budget"
+    | "budget_copy"
+    | "savings_goal"
+    | "savings_move"
+    | "savings_reverse"
+    | "recurrence_v2"
+    | "generate_v2"
+    | "recurrence_edit"
+    | "purchase_v2"
+    | "future_receipt"
+    | "confirm_future_receipt"
+    | "cancel_future_receipt"
+    | "account_check"
+    | "reserve_obligation"
+    | "import_statement"
+    | "import_correct"
+    | "tag"
+    | "loan_details"
+    | "send_advance"
+    | "confirm_advance"
+    | "reject_advance"
+    | "allocate_advance"
+    | "reverse_advance"
+    | "reverse_advance_allocation"
     | "account"
     | "card"
     | "entry"
@@ -69,6 +104,22 @@ export const demoIdentity: Identity = {
 };
 export const id = () => crypto.randomUUID();
 export function apply(s: State, c: Command, user: Identity): State {
+  const advanceUpdate = applyAdvanceCommand(s, c, user);
+  if (advanceUpdate) return advanceUpdate;
+  const loanUpdate = applyLoanDetails(s, c, user);
+  if (loanUpdate) return loanUpdate;
+  const personalUpdate = applyPersonal(s, c, user);
+  if (personalUpdate) return personalUpdate;
+  const recurrenceUpdate = applyRecurrenceCommand(s, c, user);
+  if (recurrenceUpdate) return recurrenceUpdate;
+  const incomeUpdate = applyIncomePlanning(s, c, user, (st, entry, key) =>
+    apply(st, { type: "entry", key, payload: entry }, user),
+  );
+  if (incomeUpdate) return incomeUpdate;
+  const importUpdate = applyImportTags(s, c, user);
+  if (importUpdate) return importUpdate;
+  const cardUpdate = applyCardSettings(s, c, user);
+  if (cardUpdate) return cardUpdate;
   const n = structuredClone(s),
     p = c.payload;
   const actualDate =
@@ -147,12 +198,16 @@ export function apply(s: State, c: Command, user: Identity): State {
     const expected = cents.parse(p.expected);
     if (old) {
       old.expected = expected;
+      old.expected_on = p.expected_on ? date.parse(p.expected_on) : null;
+      old.scenario = validateIncomeScenario(p.scenario ?? "manual");
       old.version++;
     } else
       n.income_months.push({
         owner_id: user.id,
         month: m,
         expected,
+        expected_on: p.expected_on ? date.parse(p.expected_on) : null,
+        scenario: validateIncomeScenario(p.scenario ?? "manual"),
         version: 1,
       });
     if (p.future) {
@@ -902,7 +957,7 @@ export class RemoteRepository {
       throw Error(
         "Não foi possível carregar os dados. Verifique sua conexão e as permissões.",
       );
-    return data as State;
+    return { ...emptyState(), ...data } as State;
   }
 
   async execute(c: Command) {

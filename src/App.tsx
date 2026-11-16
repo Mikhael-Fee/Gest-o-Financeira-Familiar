@@ -1,3 +1,18 @@
+import { FamilyAdvances } from "./components/FamilyAdvances";
+import FinancialAlerts from "./components/FinancialAlerts";
+import ImportPanel from "./components/ImportPanel";
+import TagsPanel from "./components/TagsPanel";
+import LoanDetails from "./components/LoanDetails";
+import PersonalPlanning from "./components/PersonalPlanning";
+import AvailabilityPanel from "./components/AvailabilityPanel";
+import CardManager from "./components/CardManager";
+import { RecurrenceManager } from "./components/RecurrenceManager";
+import { Onboarding } from "./components/Onboarding";
+import { IdentityAdminPanel } from "./components/IdentityAdminPanel";
+import {
+  ActivationNotice,
+  useActivationLink,
+} from "./components/ActivationLink";
 import Reports from "./components/Reports";
 import { Field, Metric, Empty, Badge } from "./components/ui";
 import {
@@ -100,9 +115,12 @@ function Auth({
   onDemo: () => void;
   onLogin: (u: Identity) => void;
 }) {
+  const activation = useActivationLink();
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [mode, setMode] = useState<"login" | "invite" | "reset">("login");
+    [mode, setMode] = useState<"login" | "invite" | "reset">(
+      activation ? "reset" : "login",
+    );
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -186,10 +204,12 @@ function Auth({
             ? "Entre para organizar o que importa."
             : "Use o convite individual enviado pela administração."}
         </p>
+        {activation && <ActivationNotice />}
         <form onSubmit={submit}>
           <Field label="Nome de usuário">
             <input
               name="username"
+              defaultValue={activation?.username}
               required
               autoComplete="username"
               minLength={3}
@@ -209,7 +229,12 @@ function Auth({
           </Field>
           {mode !== "login" && (
             <Field label="Código do convite ou recuperação">
-              <input name="token" required autoComplete="off" />
+              <input
+                name="token"
+                required
+                autoComplete="off"
+                defaultValue={activation?.token}
+              />
             </Field>
           )}
           {error && (
@@ -350,6 +375,10 @@ export default function App() {
       lock.current = false;
       setBusy(false);
     }
+  }
+  async function executeModule(type: string, payload: Record<string, unknown>) {
+    if (!(await execute(type as Command["type"], payload)))
+      throw Error("Operação recusada. Confira os dados e tente novamente.");
   }
   async function logout() {
     epoch.current++;
@@ -755,6 +784,9 @@ export default function App() {
           consumer_id: str("consumer") || user!.id,
           responsible_id: str("responsible") || null,
           card_id: str("card") || null,
+          payment_method: str("card")
+            ? "credit"
+            : str("payment_method") || "other",
           splits: str("card")
             ? []
             : [
@@ -997,6 +1029,14 @@ export default function App() {
                 path="/"
                 element={
                   <>
+                    {personal && (
+                      <AvailabilityPanel
+                        state={state}
+                        ownerId={user.id}
+                        busy={busy}
+                        onCommand={execute}
+                      />
+                    )}
                     <div className="metrics">
                       {personal ? (
                         <>
@@ -1133,6 +1173,11 @@ export default function App() {
                         </section>
                       )}
                     </div>
+                    <FinancialAlerts
+                      state={state}
+                      ownerId={user.id}
+                      house={!personal}
+                    />
                     <div className="footer-note">
                       <ShieldCheck size={15} /> Seu dinheiro é pessoal. O
                       cuidado com a Casa é compartilhado.
@@ -1157,6 +1202,14 @@ export default function App() {
                       />
                     </Field>
                     {entryList()}
+                    {personal && (
+                      <ImportPanel
+                        state={state}
+                        ownerId={user.id}
+                        busy={busy}
+                        onCommand={execute}
+                      />
+                    )}
                   </section>
                 }
               />
@@ -1164,6 +1217,7 @@ export default function App() {
                 path="/casa"
                 element={
                   <>
+                    <FinancialAlerts state={state} ownerId={user.id} house />
                     <div className="metrics">
                       <Metric
                         label="Consumo da Casa"
@@ -1213,6 +1267,11 @@ export default function App() {
                           ))}
                       </div>
                     </section>
+                    <FamilyAdvances
+                      state={state}
+                      user={user}
+                      onCommand={executeModule}
+                    />
                     <Settlements />
                     <section className="panel">
                       {heading(
@@ -1385,6 +1444,16 @@ export default function App() {
                         </article>
                       ))}
                     </section>
+                    <CardManager
+                      state={state}
+                      ownerId={user.id}
+                      onCommand={executeModule}
+                    />
+                    <FamilyAdvances
+                      state={state}
+                      user={user}
+                      onCommand={executeModule}
+                    />
                     <Settlements />
                   </>
                 }
@@ -1393,6 +1462,28 @@ export default function App() {
                 path="/planejamento"
                 element={
                   <>
+                    {personal && (
+                      <PersonalPlanning
+                        state={state}
+                        ownerId={user.id}
+                        month={month}
+                        busy={busy}
+                        onCommand={execute}
+                      />
+                    )}
+                    {personal && (
+                      <LoanDetails
+                        state={state}
+                        ownerId={user.id}
+                        onCommand={executeModule}
+                      />
+                    )}
+                    <RecurrenceManager
+                      state={state}
+                      user={user}
+                      house={!personal}
+                      onCommand={executeModule}
+                    />
                     {personal && (
                       <section className="panel">
                         {heading(
@@ -1606,6 +1697,18 @@ export default function App() {
                       "Seu espaço, com segurança",
                       "Configuração e continuidade.",
                     )}
+                    <Onboarding
+                      key={user.id}
+                      onAction={setForm}
+                      onNavigate={goTo}
+                      initiallyOpen={accounts.length === 0}
+                    />
+                    <IdentityAdminPanel
+                      userId={user.id}
+                      profiles={state.profiles}
+                      demo={demo}
+                      onRefresh={load}
+                    />
                     <h3>Primeiros passos</h3>
                     <ol>
                       <li>Cadastre sua conta e a data inicial do controle.</li>
@@ -1668,6 +1771,12 @@ export default function App() {
                         )}
                       </>
                     )}
+                    <TagsPanel
+                      state={state}
+                      ownerId={user.id}
+                      busy={busy}
+                      onCommand={execute}
+                    />
                     <h3>Categorias e subcategorias</h3>
                     <button
                       className="secondary"
@@ -2037,6 +2146,18 @@ export default function App() {
             )}
             {formType === "expense" && (
               <>
+                <Field label="Meio de pagamento em conta ou benefício">
+                  <select name="payment_method">
+                    <option value="pix">Pix</option>
+                    <option value="debit">Débito</option>
+                    <option value="cash">Dinheiro</option>
+                    <option value="boleto">Boleto</option>
+                    <option value="transfer">Transferência</option>
+                    <option value="VA">VA</option>
+                    <option value="VR">VR</option>
+                    <option value="other">Outro</option>
+                  </select>
+                </Field>
                 <Field label="Categoria">
                   <select name="category">
                     {availableCategories.map((c) => (

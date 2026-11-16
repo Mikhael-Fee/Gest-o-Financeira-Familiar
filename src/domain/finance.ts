@@ -1,3 +1,14 @@
+import type { FamilyAdvance, AdvanceAllocation } from "./advances";
+import type { LoanDetails } from "./loans";
+import type { PersonalState } from "./personal";
+import type {
+  FutureReceipt,
+  AccountCheck,
+  ObligationReservation,
+  IncomeScenario,
+} from "./availability";
+import type { ImportRecord, ManagedTag } from "./import";
+import type { CardCycle } from "./cards";
 import { z } from "zod";
 export const cents = z.number().int().safe().nonnegative().max(100_000_000_000);
 export const date = z
@@ -55,6 +66,8 @@ export type Card = {
   closing: number;
   due: number;
   authorized: string[];
+  credit_limit?: number | null;
+  version?: number;
 };
 export type Split = { account_id: string; amount: number };
 export type Entry = {
@@ -74,11 +87,15 @@ export type Entry = {
   version: number;
   voided: boolean;
   installments?: number;
+  original_amount?: number | null;
+  interest_kind?: string;
+  installment_amounts?: number[];
   income_type?: string;
   salary_month?: string | null;
   loan_id?: string | null;
   tags?: string[];
   beneficiary_id?: string | null;
+  payment_method?: string | null;
 };
 export type Payment = {
   id: string;
@@ -106,8 +123,12 @@ export type Obligation = {
   replaced_by: string | null;
   version: number;
   recurrence_id?: string | null;
+  cancelled_on?: string | null;
+  occurrence_index?: number;
+  recurrence_category?: string;
+  occurrence_override?: boolean;
 };
-export type Plan = {
+export type Plan = LoanDetails & {
   id: string;
   owner_id: string;
   description: string;
@@ -134,11 +155,21 @@ export type Settlement = {
   sent_on: string | null;
   version: number;
 };
-export type State = {
+export type State = PersonalState & {
+  family_advances?: FamilyAdvance[];
+  advance_allocations?: AdvanceAllocation[];
+  future_receipts?: FutureReceipt[];
+  account_checks?: AccountCheck[];
+  obligation_reservations?: ObligationReservation[];
+  import_records?: ImportRecord[];
+  tags_catalog?: ManagedTag[];
+  card_cycles?: CardCycle[];
   income_months: {
     owner_id: string;
     month: string;
     expected: number;
+    expected_on?: string | null;
+    scenario?: IncomeScenario;
     version: number;
   }[];
   income_references: {
@@ -201,10 +232,18 @@ export type State = {
     house: boolean;
     variable: boolean;
     active: boolean;
+    interval_unit?: "days" | "months";
+    interval_count?: number;
+    anchor_index?: number;
+    version?: number;
+    category?: string;
   }[];
   goals: { owner_id: string; month: string; amount: number }[];
 };
 export const emptyState = (): State => ({
+  personal_budgets: [],
+  savings_goals: [],
+  savings_movements: [],
   income_months: [],
   income_references: [],
   categories: [],
@@ -266,7 +305,7 @@ export function schedule(plan: Plan, family_id: string): Obligation[] {
   }));
 }
 export function remaining(o: Obligation, payments: Payment[]): number {
-  return o.replaced_by
+  return o.replaced_by || o.cancelled_on
     ? 0
     : Math.max(
         0,
@@ -282,6 +321,7 @@ export function status(
   payments: Payment[],
   now = today(),
 ): string {
+  if (o.cancelled_on) return "Cancelada";
   if (o.replaced_by) return "Renegociada";
   const left = remaining(o, payments);
   if (!left) return "Paga";
@@ -552,11 +592,13 @@ export function loanSummary(plan: Plan, state: State) {
   return {
     highestPaid: paid[0]?.number ?? 0,
     earliestOpen: open[0],
-    lastDue: plan.first_due
-      ? addMonths(plan.first_due, plan.count - 1)
-      : plan.next_due && plan.next_number
-        ? addMonths(plan.next_due, plan.count - plan.next_number)
-        : null,
+    lastDue:
+      items.find((o) => o.number === plan.count)?.due_on ??
+      (plan.first_due
+        ? addMonths(plan.first_due, plan.count - 1)
+        : plan.next_due && plan.next_number
+          ? addMonths(plan.next_due, plan.count - plan.next_number)
+          : null),
     futureSum: open.reduce((n, o) => n + remaining(o, state.payments), 0),
   };
 }

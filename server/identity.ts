@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type User } from "@supabase/supabase-js";
 import { z } from "zod";
 const url = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -55,24 +55,44 @@ Deno.serve(async (req) => {
       "identity_rate_limit",
       { bucket_key: "identity:global", max_attempts: 300 },
     );
-    const { data: allowed } = await admin.rpc("identity_rate_limit", {
-      bucket_key: `identity:${await hash(login || req.headers.get("x-forwarded-for") || "anonymous")}`,
-      max_attempts: 10,
-    });
-    if (rateError || !globalAllowed || !allowed)
+    if (rateError || !globalAllowed)
       return reply({ error: "Tente novamente mais tarde" }, 429);
-    if (body.action === "create_invite") {
+    let actorUser: User | null = null;
+    if (["manage_identity", "create_invite"].includes(body.action)) {
       const bearer = req.headers.get("authorization")?.replace(/^Bearer /, "");
+      if (!bearer) throw Error();
       const {
         data: { user },
         error,
       } = await admin.auth.getUser(bearer);
       if (error || !user) throw Error();
+      actorUser = user;
+    }
+    const { data: allowed, error: identityRateError } = await admin.rpc(
+      "identity_rate_limit",
+      {
+        bucket_key: `identity:${await hash(actorUser?.id || login || req.headers.get("x-forwarded-for") || "anonymous")}`,
+        max_attempts: actorUser ? 120 : 10,
+      },
+    );
+    if (rateError || identityRateError || !globalAllowed || !allowed)
+      return reply({ error: "Tente novamente mais tarde" }, 429);
+    if (body.action === "manage_identity") {
+      if (!actorUser) throw Error();
+      const { data, error: manageError } = await admin.rpc("manage_identity", {
+        actor: actorUser.id,
+        request: body.request,
+      });
+      if (manageError) throw Error();
+      return reply(data);
+    }
+    if (body.action === "create_invite") {
+      if (!actorUser) throw Error();
       const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map((v) => v.toString(16).padStart(2, "0"))
         .join("");
       const { error: inviteError } = await admin.rpc("create_invite", {
-        actor: user.id,
+        actor: actorUser.id,
         token_digest: await hash(token),
         reset_id: body.reset_id ?? null,
       });
@@ -123,6 +143,13 @@ Deno.serve(async (req) => {
       const { data, error } = await admin.auth.admin.getUserById(authId);
       if (error || !data.user?.email) throw Error();
       email = data.user.email;
+      const { data: expectedEmail, error: lookupError } = await admin.rpc(
+        "identity_lookup",
+        {
+          login_name: login,
+        },
+      );
+      if (lookupError || expectedEmail !== email) throw Error();
       // Disable existing sessions before allowing the new password to be used.
       const { error: updateError } = await admin.auth.admin.updateUserById(
         authId,

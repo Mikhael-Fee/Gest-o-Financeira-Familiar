@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import {
   addMonths,
-  conservativeSalary,
   forecast,
   incomeForMonth,
   money,
@@ -26,6 +25,8 @@ import type { Command } from "../data/store";
 import { Field, Metric } from "./ui";
 import { ColumnChart, DonutChart, chartColors } from "./ReportCharts";
 import SalaryPanel from "./SalaryPanel";
+import AvailabilityPanel from "./AvailabilityPanel";
+import { historicalSalary } from "../domain/availability";
 type Heading = (
   title: string,
   subtitle: string,
@@ -293,6 +294,14 @@ export default function Reports({
           );
         })}
       </div>
+      {personal && (
+        <AvailabilityPanel
+          state={state}
+          ownerId={ownerId}
+          busy={busy}
+          onCommand={onCommand}
+        />
+      )}
       <ForecastPanel
         key={ownerId + ":" + scope + ":" + month}
         state={state}
@@ -344,28 +353,8 @@ function ForecastPanel({
       invalid = true;
     }
   }
-  if (scenario === "history") {
-    const monthly = new Map<string, number>();
-    state.entries
-      .filter(
-        (e) =>
-          e.owner_id === ownerId &&
-          e.kind === "income" &&
-          e.income_type !== "extra" &&
-          !e.voided &&
-          (e.salary_month ?? e.occurred_on.slice(0, 7)) < month,
-      )
-      .forEach((e) => {
-        const m = e.salary_month ?? e.occurred_on.slice(0, 7);
-        monthly.set(m, (monthly.get(m) ?? 0) + e.amount);
-      });
-    salary = conservativeSalary(
-      [...monthly.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([, value]) => value),
-      reference,
-    );
-  }
+  if (scenario === "history")
+    salary = historicalSalary(state, ownerId, month).amount;
   const obligations = scopedObligations(state, ownerId, scope);
   const rows = personal
     ? forecast(
@@ -408,15 +397,16 @@ function ForecastPanel({
             >
               <option value="base">Referência conservadora cadastrada</option>
               <option value="history">
-                Histórico de salários · mediana conservadora de até 6 meses
+                Histórico de salários · aumentos recorrentes
               </option>
               <option value="manual">Simulação manual</option>
             </select>
           </Field>
           <p>
             Histórico usa os meses anteriores ao período escolhido, com ao menos
-            3 meses. Abaixo disso usa a referência cadastrada; extras ficam
-            separados.
+            3 competências. Usa os 3 meses consecutivos recentes ou os meses
+            disponíveis na janela de 6 meses; abaixo de 3 usa a referência.
+            Extras ficam separados e um recebimento isolado não define aumento.
           </p>
           {scenario === "manual" && (
             <Field label="Salário líquido mensal previsto (R$)">
