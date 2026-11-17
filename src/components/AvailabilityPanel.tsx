@@ -176,6 +176,13 @@ export default function AvailabilityPanel({
           </dd>
         </div>
         <div>
+          <dt>Acertos a receber de familiares</dt>
+          <dd>
+            {money(view.receivables)} · fora do disponível até confirmação; não
+            somados às projeções de renda
+          </dd>
+        </div>
+        <div>
           <dt>Separado para essas obrigações</dt>
           <dd>
             {money(view.reservedBills)} · já incluído nos compromissos, sem

@@ -2,7 +2,16 @@ import js from "@eslint/js";
 import ts from "typescript-eslint";
 import hooks from "eslint-plugin-react-hooks";
 export default ts.config(
-  { ignores: ["dist/**", "node_modules/**", "supabase/functions/**"] },
+  {
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "supabase/functions/**",
+      ".cache/",
+      "test-results/",
+      "playwright-report/",
+    ],
+  },
   js.configs.recommended,
   {
     files: ["public/sw.js"],

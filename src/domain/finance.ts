@@ -1,3 +1,9 @@
+import {
+  houseFunding,
+  refundableAdvance,
+  type FundingPart,
+  type HouseFunding,
+} from "./funding";
 import type { FamilyAdvance, AdvanceAllocation } from "./advances";
 import type { LoanDetails } from "./loans";
 import type { PersonalState } from "./personal";
@@ -106,6 +112,7 @@ export type Payment = {
   payer_id: string;
   key: string;
   reversed_on?: string | null;
+  funding_parts?: FundingPart[];
 };
 export type Obligation = {
   id: string;
@@ -127,6 +134,10 @@ export type Obligation = {
   occurrence_index?: number;
   recurrence_category?: string;
   occurrence_override?: boolean;
+  historical_paid_on?: string | null;
+  replaced_on?: string | null;
+  funding_parts?: FundingPart[];
+  funding_review?: boolean;
 };
 export type Plan = LoanDetails & {
   id: string;
@@ -146,6 +157,9 @@ export type Plan = LoanDetails & {
 };
 export type Settlement = {
   id: string;
+  entry_id?: string | null;
+  bank_credit?: number;
+  funding_review?: boolean;
   debtor_id: string;
   creditor_id: string;
   description: string;
@@ -156,6 +170,7 @@ export type Settlement = {
   version: number;
 };
 export type State = PersonalState & {
+  house_funding?: HouseFunding[];
   family_advances?: FamilyAdvance[];
   advance_allocations?: AdvanceAllocation[];
   future_receipts?: FutureReceipt[];
@@ -304,16 +319,32 @@ export function schedule(plan: Plan, family_id: string): Obligation[] {
     version: 1,
   }));
 }
-export function remaining(o: Obligation, payments: Payment[]): number {
-  return o.replaced_by || o.cancelled_on
+export function remaining(
+  o: Obligation,
+  payments: Payment[],
+  asOf?: string,
+): number {
+  const replaced =
+    o.replaced_by && (!asOf || !o.replaced_on || o.replaced_on <= asOf);
+  const cancelled = o.cancelled_on && (!asOf || o.cancelled_on <= asOf);
+  const confirmed =
+    asOf && o.historical_paid_on && o.historical_paid_on > asOf
+      ? 0
+      : o.confirmed;
+  return replaced || cancelled
     ? 0
     : Math.max(
         0,
         o.amount -
-          o.confirmed -
+          confirmed -
           payments
-            .filter((p) => p.obligation_id === o.id && !p.reversed_on)
-            .reduce((s, p) => s + p.amount, 0),
+            .filter(
+              (p) =>
+                p.obligation_id === o.id &&
+                (!asOf || p.paid_on <= asOf) &&
+                (!p.reversed_on || (!!asOf && p.reversed_on > asOf)),
+            )
+            .reduce((n, p) => n + p.amount, 0),
       );
 }
 export function status(
@@ -450,28 +481,22 @@ export function totals(s: State, month: string, owner?: string, house = false) {
       .reduce((n, o) => n + remaining(o, s.payments), 0),
   };
 }
-export function contribution(s: State, owner: string, month: string) {
-  const actual =
-    s.entries
-      .filter(
-        (e) =>
-          !e.voided &&
-          e.house &&
-          e.kind === "expense" &&
-          e.owner_id === owner &&
-          e.occurred_on.startsWith(month) &&
-          !e.card_id,
-      )
-      .reduce((n, e) => n + e.splits.reduce((v, p) => v + p.amount, 0), 0) +
-    s.payments
-      .filter(
-        (p) =>
-          !p.reversed_on &&
-          p.payer_id === owner &&
-          p.paid_on.startsWith(month) &&
-          s.obligations.find((o) => o.id === p.obligation_id)?.house,
-      )
-      .reduce((n, p) => n + p.amount, 0);
+/** Contribution follows confirmed financing, on the receipt/allocation/payment date. */
+export function contribution(
+  s: State,
+  owner: string,
+  month: string,
+  asOf = today(),
+) {
+  const actual = houseFunding(s)
+    .filter(
+      (e) =>
+        e.member_id === owner &&
+        e.kind !== "advance" &&
+        e.occurred_on.startsWith(month) &&
+        e.occurred_on <= asOf,
+    )
+    .reduce((n, e) => n + e.amount, 0);
   const goal =
     s.goals.find((g) => g.owner_id === owner && g.month === month)?.amount ?? 0;
   return {
@@ -480,6 +505,7 @@ export function contribution(s: State, owner: string, month: string) {
     missing: Math.max(0, goal - actual),
     above: Math.max(0, actual - goal),
     debt: 0,
+    reimbursableAdvance: refundableAdvance(s, owner, asOf),
   };
 }
 export function incomeForMonth(

@@ -253,6 +253,7 @@ describe("Casa e VA/VR", () => {
     const s = demoState();
     expect(contribution(s, "a", "2026-11")).toEqual({
       actual: 40000,
+      reimbursableAdvance: 0,
       goal: 60000,
       missing: 20000,
       above: 0,

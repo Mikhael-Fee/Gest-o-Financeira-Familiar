@@ -44,7 +44,7 @@ export function FamilyAdvances({
         (x) =>
           x.debtor_id === advance.sender_id &&
           x.creditor_id === advance.recipient_id &&
-          x.amount > x.confirmed + x.sent,
+          x.amount > x.confirmed + x.sent + (x.bank_credit ?? 0),
       )
     : [];
   async function submit(e: FormEvent) {
@@ -222,7 +222,9 @@ export function FamilyAdvances({
               {targets.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.description} · Em aberto{" "}
-                  {money(x.amount - x.confirmed - x.sent)}
+                  {money(
+                    x.amount - x.confirmed - x.sent - (x.bank_credit ?? 0),
+                  )}
                 </option>
               ))}
             </select>

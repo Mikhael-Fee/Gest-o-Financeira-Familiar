@@ -1,3 +1,4 @@
+import { allowIdentityRequest } from "./identityLimits";
 import { createClient, type User } from "@supabase/supabase-js";
 import { z } from "zod";
 const url = Deno.env.get("SUPABASE_URL")!;
@@ -55,12 +56,6 @@ Deno.serve(async (req) => {
     const body = JSON.parse(raw);
     // Rate limits persist in PostgreSQL; unknown usernames consume the same budget.
     const login = body.username ? username.parse(body.username) : "";
-    const { data: globalAllowed, error: rateError } = await admin.rpc(
-      "identity_rate_limit",
-      { bucket_key: "identity:global", max_attempts: 300 },
-    );
-    if (rateError || !globalAllowed)
-      return reply({ error: "Tente novamente mais tarde" }, 429);
     let actorUser: User | null = null;
     if (["manage_identity", "create_invite"].includes(body.action)) {
       const bearer = req.headers.get("authorization")?.replace(/^Bearer /, "");
@@ -72,14 +67,47 @@ Deno.serve(async (req) => {
       if (error || !user) throw Error();
       actorUser = user;
     }
-    const { data: allowed, error: identityRateError } = await admin.rpc(
-      "identity_rate_limit",
-      {
-        bucket_key: `identity:${await hash(actorUser?.id || login || req.headers.get("x-forwarded-for") || "anonymous")}`,
-        max_attempts: actorUser ? 120 : 10,
+    let loginEmail: string | null = null;
+    let recognized = !!actorUser;
+    if (body.action === "login") {
+      const { data, error } = await admin.rpc("identity_lookup", {
+        login_name: login,
+      });
+      if (error) throw Error();
+      loginEmail = data;
+      recognized = !!data;
+    } else if (
+      ["invite", "reset"].includes(body.action) &&
+      /^[a-f0-9]{64}$/.test(body.token ?? "")
+    ) {
+      const { data, error } = await admin.rpc("identity_invite_valid", {
+        token_digest: await hash(body.token),
+        reset_mode: body.action === "reset",
+      });
+      if (error) throw Error();
+      recognized = !!data;
+    }
+    const subject = await hash(
+      actorUser?.id ||
+        (body.action === "login" ? login : body.token) ||
+        "anonymous",
+    );
+    const allowed = await allowIdentityRequest(
+      subject,
+      recognized,
+      !!actorUser,
+      async (bucket, max) => {
+        const { data, error } = await admin.rpc("identity_rate_limit", {
+          bucket_key: bucket,
+          max_attempts: max,
+        });
+        if (error) throw Error();
+        return !!data;
       },
     );
-    if (rateError || identityRateError || !globalAllowed || !allowed)
+    // Avoid exposing whether a username exists when the unknown-identity budget is exhausted.
+    if (allowed === "unknown_limited") throw Error();
+    if (allowed === "subject_limited")
       return reply({ error: "Tente novamente mais tarde" }, 429);
     if (body.action === "manage_identity") {
       if (!actorUser) throw Error();
@@ -111,12 +139,9 @@ Deno.serve(async (req) => {
     });
     if (body.action === "login") {
       const secret = z.string().min(1).max(128).parse(body.password);
-      const { data: email } = await admin.rpc("identity_lookup", {
-        login_name: login,
-      });
       // Always call password auth, including unknown identities, with a generic response.
       const { data, error } = await auth.auth.signInWithPassword({
-        email: email || `unknown@${domain}`,
+        email: loginEmail || `unknown@${domain}`,
         password: secret,
       });
       if (error || !data.session) throw Error();

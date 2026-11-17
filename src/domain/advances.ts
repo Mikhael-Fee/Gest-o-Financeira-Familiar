@@ -198,7 +198,7 @@ export function applyAdvanceCommand(
       !s ||
       s.version !== p.settlement_version ||
       amount > availableAdvance(n, a) ||
-      amount > s.amount - s.confirmed - s.sent
+      amount > s.amount - s.confirmed - s.sent - (s.bank_credit ?? 0)
     )
       throw Error("Crédito ou acerto indisponível.");
     n.advance_allocations.push({

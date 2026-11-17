@@ -1,3 +1,4 @@
+import { checkFundingCommand, attachFundingChanges } from "./fundingCommands";
 import { applyAdvanceCommand } from "../domain/advances";
 import { applyLoanDetails } from "../domain/loans";
 import { applyPersonal } from "../domain/personal";
@@ -103,7 +104,8 @@ export const demoIdentity: Identity = {
 };
 export const id = () => crypto.randomUUID();
 export function apply(s: State, c: Command, user: Identity): State {
-  const next = applyCore(s, c, user);
+  checkFundingCommand(s, c, user);
+  const next = attachFundingChanges(s, applyCore(s, c, user), c);
   if (
     [
       "savings_goal",
@@ -430,6 +432,10 @@ function applyCore(s: State, c: Command, user: Identity): State {
       throw Error("Registro alterado. Atualize e tente novamente.");
     const amount = cents.positive().parse(p.amount);
     date.parse(p.paid_on);
+    if (String(p.paid_on) < a.cutoff)
+      throw Error(
+        "Use histórico de abertura para pagamento anterior ao início da conta.",
+      );
     if (amount > remaining(o, n.payments))
       throw Error("Pagamento maior que o saldo em aberto.");
     if (["VA", "VR"].includes(a.kind))
@@ -487,7 +493,18 @@ function applyCore(s: State, c: Command, user: Identity): State {
           t.confirmed_on &&
           !t.reversed_on,
       );
-      if (!t) throw Error("Transferência inválida.");
+      const destination = n.accounts.find(
+        (a) => a.id === t?.destination_id && a.owner_id === user.id,
+      );
+      if (
+        !t ||
+        !destination ||
+        String(p.date) < t.confirmed_on! ||
+        balance(destination, n) < t.amount
+      )
+        throw Error(
+          "Transferência inválida: confira a data e o saldo para devolver.",
+        );
       n.account_movements.push(
         {
           id: id(),
@@ -561,6 +578,7 @@ function applyCore(s: State, c: Command, user: Identity): State {
     const value = cents.parse(p.amount);
     if (value > o.amount) throw Error("Valor maior que a parcela.");
     o.confirmed = value;
+    o.historical_paid_on = String(p.date);
     o.unknown = false;
     o.version++;
   }
@@ -741,7 +759,7 @@ function applyCore(s: State, c: Command, user: Identity): State {
     );
     if (!x) throw Error("Acerto não autorizado.");
     const amount = cents.positive().parse(p.amount);
-    if (x.sent + amount > x.amount - x.confirmed)
+    if (x.sent + amount > x.amount - x.confirmed - (x.bank_credit ?? 0))
       throw Error("Valor excede o acerto.");
     const source = n.accounts.find(
       (a) =>
@@ -749,7 +767,12 @@ function applyCore(s: State, c: Command, user: Identity): State {
         a.owner_id === user.id &&
         !["VA", "VR"].includes(a.kind),
     );
-    if (!source) throw Error("Informe a conta de origem.");
+    if (
+      !source ||
+      String(p.sent_on) < source.cutoff ||
+      balance(source, n) < amount
+    )
+      throw Error("Informe conta de origem, data e saldo suficientes.");
     n.settlement_transfers.push({
       id: c.key,
       settlement_id: x.id,
@@ -782,6 +805,14 @@ function applyCore(s: State, c: Command, user: Identity): State {
         (t) => t.settlement_id === x.id && !t.confirmed_on && !t.rejected_on,
       )
       .forEach((t) => {
+        // Private counterpart accounts may be absent from the demo snapshot; the server validates them.
+        const source = n.accounts.find((a) => a.id === t.source_id);
+        if (
+          String(p.date) < t.sent_on ||
+          String(p.date) < account.cutoff ||
+          (source && balance(source, n) < t.amount)
+        )
+          throw Error("Confirmação inválida: confira data e saldo da origem.");
         n.account_movements.push(
           {
             id: id(),

@@ -1,3 +1,4 @@
+import { settlementPending } from "./funding";
 import {
   addMonths,
   balance,
@@ -164,22 +165,22 @@ export function availableMoney(
     .filter((a) => a.owner_id === ownerId && ["VA", "VR"].includes(a.kind))
     .reduce((n, a) => n + balance(a, state, asOf), 0);
   const ownObligations = state.obligations.filter(
-    (o) => o.owner_id === ownerId && remaining(o, state.payments) > 0,
+    (o) => o.owner_id === ownerId && remaining(o, state.payments, asOf) > 0,
   );
   const dated = ownObligations.filter(
     (o) => o.due_on !== null && o.due_on <= until,
   );
   const undated = ownObligations
     .filter((o) => o.due_on === null)
-    .reduce((n, o) => n + remaining(o, state.payments), 0);
+    .reduce((n, o) => n + remaining(o, state.payments, asOf), 0);
   const overdue = dated
     .filter((o) => o.due_on! < asOf)
-    .reduce((n, o) => n + remaining(o, state.payments), 0);
+    .reduce((n, o) => n + remaining(o, state.payments, asOf), 0);
   const invoices = dated
     .filter((o) => o.card_id)
-    .reduce((n, o) => n + remaining(o, state.payments), 0);
+    .reduce((n, o) => n + remaining(o, state.payments, asOf), 0);
   const obligations = dated.reduce(
-    (n, o) => n + remaining(o, state.payments),
+    (n, o) => n + remaining(o, state.payments, asOf),
     0,
   );
   const otherBills = obligations - invoices;
@@ -215,13 +216,16 @@ export function availableMoney(
   for (const r of allReservations) {
     const o = ownObligations.find((o) => o.id === r.obligation_id);
     if (!o) continue;
-    const amount = Math.min(r.amount, remaining(o, state.payments));
+    const amount = Math.min(r.amount, remaining(o, state.payments, asOf));
     if (dated.some((d) => d.id === o.id)) reservedBills += amount;
     else reservedOutsideHorizon += amount;
   }
   const pendingSettlements = state.settlements
     .filter((s) => s.debtor_id === ownerId)
-    .reduce((n, s) => n + Math.max(0, s.amount - s.confirmed), 0);
+    .reduce((n, s) => n + settlementPending(state, s, asOf), 0);
+  const receivables = state.settlements
+    .filter((s) => s.creditor_id === ownerId)
+    .reduce((n, s) => n + settlementPending(state, s, asOf), 0);
   const future = (state.future_receipts ?? []).filter(
     (r) =>
       r.owner_id === ownerId &&
@@ -274,9 +278,9 @@ export function availableMoney(
         o.owner_id !== ownerId &&
         o.family_id === family &&
         !o.replaced_by &&
-        remaining(o, state.payments) > 0,
+        remaining(o, state.payments, asOf) > 0,
     )
-    .reduce((n, o) => n + remaining(o, state.payments), 0);
+    .reduce((n, o) => n + remaining(o, state.payments, asOf), 0);
   const free =
     bank - obligations - savings - reservedOutsideHorizon - pendingSettlements;
   return {
@@ -292,6 +296,7 @@ export function availableMoney(
     reservedBills,
     reservedOutsideHorizon,
     pendingSettlements,
+    receivables,
     expectedIncome,
     committedIncome,
     free,
@@ -301,7 +306,9 @@ export function availableMoney(
       !accounts.length ||
       !!undated ||
       !!staleAccounts.length ||
-      !!unlinkedSavings,
+      !!unlinkedSavings ||
+      state.settlements.some((s) => s.funding_review) ||
+      ownObligations.some((o) => o.unknown || o.funding_review),
     staleAccounts,
     unassignedHouse,
   };

@@ -173,6 +173,12 @@ export function consumptionReport(
     categories,
     sources,
     history,
+    personal: current
+      .filter(({ entry }) => !entry.house)
+      .reduce((n, e) => n + e.amount, 0),
+    house: current
+      .filter(({ entry }) => entry.house)
+      .reduce((n, e) => n + e.amount, 0),
     total: current.reduce((n, e) => n + e.amount, 0),
     count: current.length,
   };
@@ -281,7 +287,9 @@ export function contributionReport(
     .map((p) => ({
       id: p.id,
       name: p.name,
-      actual: contribution(confirmed, p.id, month).actual,
+      actual: contribution(confirmed, p.id, month, asOf).actual,
+      reimbursableAdvance: contribution(confirmed, p.id, month, asOf)
+        .reimbursableAdvance,
       // Another member's private goal must not be inferred as zero.
       goal:
         p.id === owner

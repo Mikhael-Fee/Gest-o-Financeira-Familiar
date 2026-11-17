@@ -1,3 +1,4 @@
+import { settlementPending } from "./domain/funding";
 import { FamilyAdvances } from "./components/FamilyAdvances";
 import FinancialAlerts from "./components/FinancialAlerts";
 import ImportPanel from "./components/ImportPanel";
@@ -1055,7 +1056,7 @@ export default function App() {
                           <Metric
                             label="Consumo do mês"
                             value={money(t.consumption)}
-                            hint="Inclui sua parte da Casa · sem somar pagamentos de fatura novamente"
+                            hint="Total atribuído a você, incluindo Casa, antes de reembolsos; sem repetir faturas"
                           />
                           <Metric
                             label="Obrigações em aberto"
@@ -1230,7 +1231,7 @@ export default function App() {
                       <Metric
                         label="Minha contribuição"
                         value={money(goal.actual)}
-                        hint="Gastos efetivos sem crédito"
+                        hint="Dinheiro fornecido e VA/VR usados pela família; pagamento de passagem não conta"
                         positive
                       />
                       <Metric
@@ -2145,6 +2146,13 @@ export default function App() {
                 </select>
               </Field>
             )}
+            {formType === "pay" && (
+              <p>
+                Pagar uma compra da Casa com seu dinheiro reduz o acerto
+                vinculado ao cartão e registra sua contribuição. Não repita um
+                valor já enviado para reembolso.
+              </p>
+            )}
             {formType === "expense" && (
               <>
                 <Field label="Meio de pagamento em conta ou benefício">
@@ -2217,8 +2225,10 @@ export default function App() {
                     </select>
                   </Field>
                   <Field label="Responsável financeiro (opcional)">
-                    <select name="responsible">
-                      <option value="">Ainda não definido</option>
+                    <select name="responsible" defaultValue={user.id}>
+                      <option value="">
+                        Usar quem consumiu (exige autorização)
+                      </option>
                       {state.profiles.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}
@@ -2226,6 +2236,11 @@ export default function App() {
                       ))}
                     </select>
                   </Field>
+                  <p>
+                    Você pode assumir a despesa ou usar a responsabilidade do
+                    titular do cartão. Outro familiar precisa registrar a
+                    própria dívida.
+                  </p>
                 </details>
                 <details>
                   <summary>Dividir entre dois meios de pagamento</summary>
@@ -2511,6 +2526,11 @@ export default function App() {
             )}
             {formType === "replace" && (
               <>
+                <p>
+                  Selecione despesas do mesmo cartão e da mesma visão, pessoal
+                  ou Casa. Descontos com reembolso vinculado precisam de
+                  conciliação entre os participantes antes da renegociação.
+                </p>
                 <Field label="Data do acordo confirmado">
                   <input
                     name="occurred_on"
@@ -2603,8 +2623,8 @@ export default function App() {
               <div className="metrics compact">
                 <Metric
                   label="A acertar"
-                  value={money(x.amount - x.confirmed)}
-                  hint="Somente confirmações reduzem o saldo"
+                  value={money(settlementPending(state, x))}
+                  hint="Reembolsos confirmados e pagamentos diretos de outros familiares reduzem o acerto"
                 />
                 <Metric
                   label="Enviado, a confirmar"
@@ -2617,6 +2637,18 @@ export default function App() {
                   hint="Não é salário nem pagamento da fatura"
                 />
               </div>
+              {!!x.bank_credit && (
+                <p>
+                  Pago diretamente ao banco por outros familiares:{" "}
+                  {money(x.bank_credit)}. Esse valor já reduz o acerto.
+                </p>
+              )}
+              {x.funding_review && (
+                <p role="status">
+                  Financiamento a conferir: há valores antigos sem conciliação.
+                  Confira o histórico antes de continuar.
+                </p>
+              )}
               {x.creditor_id === user!.id && x.sent > 0 && (
                 <>
                   <button

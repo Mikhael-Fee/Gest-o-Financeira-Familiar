@@ -60,6 +60,12 @@ export default function Reports({
   const [filters, setFilters] = useState(noConsumptionFilters);
   const personal = scope === "personal";
   const data = consumptionReport(state, ownerId, scope, month, months, filters);
+  const monthlyPersonal = consumptionReport(
+    state,
+    ownerId,
+    "personal",
+    month,
+  ).personal;
   const cash = cashReport(state, ownerId, month, months);
   const contributions = contributionReport(state, ownerId, scope, month);
   const all = consumptionRows(state, ownerId, scope);
@@ -167,6 +173,32 @@ export default function Reports({
           Limpar filtros de consumo
         </button>
       </section>
+      {personal && (
+        <div className="metrics compact">
+          <Metric
+            label="Meus gastos estritamente pessoais"
+            value={money(data.personal)}
+            hint="Base do orçamento individual; exclui Casa"
+          />
+          <Metric
+            label="Consumo da Casa atribuído a mim"
+            value={money(data.house)}
+            hint="Na compra, antes de reembolsos"
+          />
+          <Metric
+            label="Total de consumo atribuído a mim"
+            value={money(data.total)}
+            hint="Pessoal + Casa; respeita os filtros de consumo"
+          />
+          <Metric
+            label="Total financeiro assumido"
+            value={money(
+              monthlyPersonal + contributions.reduce((n, c) => n + c.actual, 0),
+            )}
+            hint="Consumo estritamente pessoal + contribuição efetiva à Casa no mês; visão sem filtros de consumo, datas podem diferir"
+          />
+        </div>
+      )}
       <div className="report-chart-grid">
         <section className="panel report-wide" aria-label="Evolução do consumo">
           {heading(
@@ -253,7 +285,7 @@ export default function Reports({
       <section className="panel" aria-label="Contribuições à Casa">
         {heading(
           "Contribuições à Casa",
-          "Gasto efetivo destinado à família. Meta flexível não é dívida, mesmo quando falta para o objetivo.",
+          "Dinheiro efetivamente fornecido à família. Meta flexível não gera dívida.",
         )}
         <ColumnChart
           title="contribuições à Casa"
@@ -270,9 +302,24 @@ export default function Reports({
           empty="Nenhuma contribuição ou meta registrada neste mês."
         />
         <p>
-          Recarga e uso pessoal de VA/VR não contam. A meta de outro membro é
-          privada; não aparecer aqui não significa meta zero.
+          Reembolso conta na confirmação; crédito antecipado conta quando
+          alocado à compra. Pagar o banco com dinheiro reembolsável é um
+          adiantamento, sem contribuição definitiva. Estornos corrigem o mês da
+          devolução. Recarga e uso pessoal de VA/VR não contam. A meta de outro
+          membro é privada; não aparecer aqui não significa meta zero.
         </p>
+        {contributions.some((c) => c.reimbursableAdvance > 0) && (
+          <ul>
+            {contributions
+              .filter((c) => c.reimbursableAdvance > 0)
+              .map((c) => (
+                <li key={c.id}>
+                  {c.name}: {money(c.reimbursableAdvance)} adiantados ao banco,
+                  ainda reembolsáveis na posição atual.
+                </li>
+              ))}
+          </ul>
+        )}
       </section>
       <div className="metrics compact">
         {[30, 60, 90].map((days) => {
