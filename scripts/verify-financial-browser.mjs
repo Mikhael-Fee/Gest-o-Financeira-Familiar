@@ -7,6 +7,7 @@ export async function verifyFinancialBrowser({
   origin,
   fixturePath,
   evidencePath,
+  members = [1, 2, 3],
 }) {
   if (origin !== "https://entre-nos-homologacao.netlify.app")
     throw Error("Site fora da homologação autorizada");
@@ -18,12 +19,15 @@ export async function verifyFinancialBrowser({
     ...(proxy ? { proxy: { server: proxy } } : {}),
   });
   const evidence = [];
+  let step = "abrir navegador";
   try {
     for (const [member, viewport] of [
       [1, { width: 1366, height: 900 }],
       [2, { width: 393, height: 851 }],
       [3, { width: 393, height: 851 }],
     ]) {
+      if (!members.includes(member)) continue;
+      step = `login fictício ${member}`;
       const context = await browser.newContext({ viewport }),
         page = await context.newPage();
       page.setDefaultTimeout(30000);
@@ -37,8 +41,14 @@ export async function verifyFinancialBrowser({
       await page
         .getByRole("button", { name: "Entrar com segurança", exact: true })
         .click();
-      await page.locator("aside").waitFor({ state: "visible" });
+      await page
+        .getByRole("heading", {
+          name: `Olá, ${f.members[member].username}.`,
+          exact: true,
+        })
+        .waitFor({ state: "visible" });
       await page.getByLabel("Mês de referência").fill("2026-11");
+      step = `valores e privacidade do membro ${member}`;
       const metric = async (label, amount) => {
         const t = await page
           .getByText(label, { exact: true })
@@ -102,6 +112,12 @@ export async function verifyFinancialBrowser({
         await page
           .getByRole("heading", { name: "Relatórios da Casa", exact: true })
           .waitFor();
+        await page
+          .getByRole("region", { name: "Contribuições à Casa" })
+          .getByText("Ver dados em tabela · contribuições à Casa", {
+            exact: true,
+          })
+          .click();
         assert.ok(
           (await page.locator("body").innerText()).includes("2.500,00"),
         );
@@ -121,9 +137,25 @@ export async function verifyFinancialBrowser({
           ),
         );
       }
+      step = `acessibilidade do membro ${member}`;
       const accessibility = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
         .analyze();
+      if (accessibility.violations.length)
+        await writeFile(
+          evidencePath + ".axe-failure.json",
+          JSON.stringify(
+            accessibility.violations.map((v) => ({
+              id: v.id,
+              impact: v.impact,
+              nodes: v.nodes.map((n) => ({
+                target: n.target,
+                summary: n.failureSummary,
+              })),
+            })),
+          ),
+          { mode: 0o600 },
+        );
       assert.equal(
         accessibility.violations.length,
         0,
@@ -136,8 +168,8 @@ export async function verifyFinancialBrowser({
             globalThis.innerWidth,
         ),
       );
-      const menu = page.getByRole("button", { name: "Abrir menu" });
-      if (await menu.isVisible()) await menu.click();
+      step = `encerrar sessão do membro ${member}`;
+      await nav("Configurações");
       await page.getByRole("button", { name: "Sair e limpar sessão" }).click();
       await page.getByLabel("Nome de usuário", { exact: true }).waitFor();
       await page.reload();
@@ -153,6 +185,7 @@ export async function verifyFinancialBrowser({
       });
       await context.close();
     }
+    step = "demonstração pública";
     const context = await browser.newContext({
         viewport: { width: 393, height: 851 },
       }),
@@ -160,12 +193,14 @@ export async function verifyFinancialBrowser({
     await page.goto(origin);
     await page.getByRole("button", { name: "Explorar demonstração" }).click();
     await page
-      .getByText("Ambiente de demonstração", { exact: false })
+      .getByText("Dados fictícios · Explore à vontade.", { exact: false })
       .waitFor();
     evidence.push({ demo: true });
     await context.close();
     await writeFile(evidencePath, JSON.stringify(evidence), { mode: 0o600 });
     return evidence;
+  } catch (error) {
+    throw Error(`${step}: ${error.message}`, { cause: error });
   } finally {
     await browser.close();
   }

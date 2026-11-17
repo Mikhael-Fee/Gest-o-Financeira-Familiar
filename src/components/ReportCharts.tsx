@@ -52,7 +52,12 @@ export function ChartTable({
   return (
     <details className="chart-table">
       <summary>Ver dados em tabela · {title}</summary>
-      <div className="table-scroll">
+      <div
+        className="table-scroll"
+        tabIndex={0}
+        role="region"
+        aria-label={`Dados de ${title}`}
+      >
         <table>
           <caption>{title}</caption>
           <thead>
