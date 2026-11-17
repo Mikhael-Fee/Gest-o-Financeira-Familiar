@@ -1,5 +1,7 @@
 # Validação executada — 13/11/2026
 
+> Evidências mais recentes (17/11/2026): [Auditoria do núcleo financeiro](AUDITORIA_NUCLEO_FINANCEIRO.md). Inclui homologação autenticada concluída, publicação `7127db1`, 210 testes, 67 Playwright e 39 pgTAP locais/remotos. Os registros anteriores abaixo são históricos.
+
 > Registro histórico desta etapa. A continuação de 16/11 concluiu a homologação autenticada e criou o administrador; consulte [o relatório final atualizado](CONCLUSAO_HOMOLOGACAO.md). Os bloqueios e contagens abaixo descrevem as verificações anteriores.
 
 Dados exclusivamente fictícios. Resultados locais não constituem publicação, auditoria independente nem homologação de produção.
