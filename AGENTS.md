@@ -34,3 +34,11 @@ Este repositório foi preparado só com documentos; **você é responsável por 
 - Não exponha dados financeiros em logs, relatórios de CI ou screenshots públicas.
 - Quando precisar de decisões não especificadas, escolha defaults prudentes e documente; só solicite usuário quando necessário.
 - Entregue relatório final em português: implementado, testes executados, pendências, riscos, como iniciar localmente e quais configurações de Supabase/hospedagem ainda faltam.
+
+## Estrutura implementada e validação local
+
+A aplicação agora usa React/TypeScript/Vite e Supabase. Leia também `docs/PRODUCT_SPEC.md`, `docs/FINANCIAL_RULES.md`, `docs/DATA_MODEL.md`, `docs/SECURITY.md`, `docs/DEPLOY.md` e `docs/TEST_PLAN.md` antes de mudar regras de domínio. Documentos originais continuam sendo o contrato principal.
+
+Execute `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` e `npm run test:e2e` antes de entregar mudanças. E2E PWA requer build prévio. Em cloud, Chromium pode ser selecionado com `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium`. PostgreSQL/PGlite testa as migrations e RLS sem serviço externo; `npm run test:rls` acrescenta pgTAP no Supabase local.
+
+Use o checkout existente: cada tarefa cloud já é isolada; não crie worktree sem solicitação explícita. Demonstração é memória descartável, nunca persistência de produção. Operações reais passam por RPC autorizada e transacional. Não exponha schema private nem conceda escrita direta às tabelas para contornar falhas.
