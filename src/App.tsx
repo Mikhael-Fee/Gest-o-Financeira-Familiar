@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase, dominioLogin } from "./supabase";
 import { usuarioParaEmail } from "./usuario";
-import { PERFIS_DEMO, cartoesDemo, cartoesQueUsoDemo, casaDemo, devoDemo, lancamentosDemo } from "./demo";
+import { PERFIS_DEMO, cartoesDemo, cartoesQueUsoDemo, casaDemo, devoDemo, historicoDemo, lancamentosDemo } from "./demo";
 import { Casa } from "./Casa";
 import { Familia } from "./Familia";
 import { repositorioPrivacidadeDemo, repositorioPrivacidadeSupabase } from "./privacidade";
@@ -10,10 +10,11 @@ import { Minhas } from "./Minhas";
 import { repositorioDemo, repositorioSupabase } from "./repositorio";
 import type { Perfil } from "./tipos";
 import { Ajustes } from "./Ajustes";
+import { Resumo } from "./Resumo";
 import { BotaoInstalar } from "./Instalar";
 
 type Sessao = { perfil: Perfil; demo: boolean };
-type Aba = "minhas" | "casa" | "familia" | "ajustes";
+type Aba = "minhas" | "resumo" | "casa" | "familia" | "ajustes";
 
 export function App() {
   const [sessao, setSessao] = useState<Sessao | null>(null);
@@ -133,7 +134,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
     [sessao.demo],
   );
   const repo = useMemo(
-    () => (sessao.demo ? repositorioDemo(lancamentosDemo(perfil.id), cartoesDemo(perfil.id), devoDemo(perfil.id), cartoesQueUsoDemo(perfil.id)) : repositorioSupabase(perfil.id)),
+    () => (sessao.demo ? repositorioDemo([...lancamentosDemo(perfil.id), ...historicoDemo(perfil.id)], cartoesDemo(perfil.id), devoDemo(perfil.id), cartoesQueUsoDemo(perfil.id)) : repositorioSupabase(perfil.id)),
     [sessao.demo, perfil.id],
   );
 
@@ -174,6 +175,8 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
       <main className="conteudo wrap">
         {aba === "minhas" && <Minhas key={perfil.id} repo={repo} perfil={perfil} casa={repoCasa} familia={familia} />}
 
+        {aba === "resumo" && <Resumo key={perfil.id} repo={repo} casa={repoCasa} />}
+
         {aba === "casa" && familia.length > 0 && <Casa key={perfil.id} repo={repoCasa} eu={perfil} familia={familia} />}
         {aba === "casa" && familia.length === 0 && <p className="nota">Carregando a família…</p>}
 
@@ -186,6 +189,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
         <div className="abas-in">
           {([
             ["minhas", "Minhas", IconeEu],
+            ["resumo", "Resumo", IconeResumo],
             ["casa", "Casa", IconeCasa],
             ["familia", "Família", IconeFamilia],
           ] as const).map(([id, rotulo, Icone]) => (
@@ -205,4 +209,5 @@ const svg = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", stroke
 const IconeEu = () => (<svg {...svg}><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>);
 const IconeCasa = () => (<svg {...svg}><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></svg>);
 const IconeAjustes = () => (<svg {...svg}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>);
+const IconeResumo = () => (<svg {...svg}><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M21 20H3" /></svg>);
 const IconeFamilia = () => (<svg {...svg}><circle cx="8" cy="9" r="3" /><circle cx="17" cy="10" r="2.5" /><path d="M2.5 20c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5" /><path d="M14 16c.8-1 2-1.6 3-1.6 2 0 3.6 1.4 4.3 4" /></svg>);
