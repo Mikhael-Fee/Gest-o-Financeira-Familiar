@@ -5,7 +5,9 @@
 export const DOMINIO_PADRAO = "entrenos.local";
 
 export function normalizarUsuario(usuario: string): string {
+  // Aceita também o e-mail completo (ex.: "mae@entrenos.local"): usa só a parte antes do @.
   return usuario
+    .split("@")[0]
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .trim()

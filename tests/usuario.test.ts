@@ -17,6 +17,12 @@ describe("login por usuário", () => {
     expect(usuarioParaEmail("Pai", "familia.app")).toBe("pai@familia.app");
   });
 
+  it("aceita quem digita o e-mail completo", () => {
+    expect(normalizarUsuario("Mae@entrenos.local")).toBe("mae");
+    expect(usuarioParaEmail("pai@entrenos.local ")).toBe("pai@entrenos.local");
+    expect(usuarioParaEmail("pai@qualquercoisa.com")).toBe("pai@entrenos.local");
+  });
+
   it("recusa usuário vazio", () => {
     expect(() => usuarioParaEmail("   ")).toThrow("Digite seu usuário.");
   });
