@@ -5,7 +5,7 @@ import type { Repositorio, NovoLancamento } from "./repositorio";
 import type { RepositorioCasa } from "./repositorioCasa";
 import type { Forma } from "./casa";
 import { podeGerenciarCasa, type Perfil } from "./tipos";
-import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, vencimentoDaCompra, type Cartao } from "./cartoes";
+import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, nomeEmprestado, vencimentoDaCompra, type Cartao } from "./cartoes";
 import { Folha, Segmento } from "./Folha";
 
 type ParaCasa = Forma | "nao";
@@ -24,7 +24,8 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const [queUso, setQueUso] = useState<Cartao[]>([]);
   const [erro, setErro] = useState("");
   const [editando, setEditando] = useState<NovoLancamento | null>(null);
-  const [gerenciarCartoes, setGerenciarCartoes] = useState(false);
+  const [novoCartao, setNovoCartao] = useState(false);
+  const [abertos, setAbertos] = useState<string[]>([]); // pendências abertas
   const [aReceber, setAReceber] = useState<Lancamento[]>([]);
   const [devo, setDevo] = useState<(Lancamento & { dono: string })[]>([]);
   const [recebendo, setRecebendo] = useState<string | null>(null); // pessoa
@@ -78,6 +79,9 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   };
   const receberPorPessoa = agrupar(aReceber, (l) => l.deQuem!);
   const devoPorPessoa = agrupar(devo, (l) => l.dono);
+  const pendencias = receberPorPessoa.length + devoPorPessoa.length;
+  // Só os cartões com fatura no mês e os de outra pessoa que você usa (para lançar compra).
+  const cartoesCredito = [...cartoes.filter((c) => faturas.has(c.id)), ...queUso.filter((c) => c.temCredito)];
 
   const novo = (cartao?: Cartao) =>
     setEditando({
@@ -114,80 +118,56 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         </section>
       )}
 
-      <section className="painel">
-        <div className="cabeca">
-          <h2>Cartões</h2>
-          <button className="btn pequeno fantasma" onClick={() => setGerenciarCartoes(true)}>{cartoes.length ? "Gerenciar cartões" : "+ Cartão"}</button>
-        </div>
-        {cartoes.length === 0 && <p className="nota">Cadastre seus cartões para lançar compras no débito, no crédito e parceladas.</p>}
-        <ul className="lista">
-          {cartoes.map((c) => {
-            const f = faturas.get(c.id);
-            return (
-              <li key={c.id}>
-                <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
-                <span className="texto">
-                  <b>{nomeCartao(c)}</b>
-                  <span>
-                    {[c.temCredito && "Crédito", c.temDebito && "Débito"].filter(Boolean).join(" e ")}
-                    {c.temCredito && ` · fecha dia ${c.diaFechamento}, vence dia ${c.diaVencimento}`}
-                    {c.usadoPor && c.usadoPor !== perfil.id && ` · usado por ${nomeDe(c.usadoPor)}`}
-                  </span>
-                </span>
-                {c.temCredito && (
-                  <span className="fim">
-                    <b className="valor">{reais(f?.total ?? 0)}</b>
-                    <span className="mini-cinza">fatura {f ? `vence ${dataCurta(f.data)}` : "do mês"}</span>
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      {queUso.length > 0 && (
+      {(pendencias > 0) && (
         <section className="painel">
-          <h2>Cartões que uso</h2>
-          <ul className="lista">
-            {queUso.map((c) => {
-              const aPagar = devo.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
-              return (
-                <li key={c.id}>
-                  <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
-                  <span className="texto">
-                    <b>{nomeCartao(c)}</b>
-                    <span>De {nomeDe(c.dono)} · fecha dia {c.diaFechamento}, vence dia {c.diaVencimento}{aPagar > 0 ? ` · você deve ${reais(aPagar)}` : ""}</span>
-                  </span>
-                  <span className="fim"><button className="btn pequeno" onClick={() => novo(c)}>+ Compra</button></span>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="nota">Cartões no nome de outra pessoa. A compra fica na fatura dela, e as duas pessoas veem.</p>
-        </section>
-      )}
-
-      {receberPorPessoa.length > 0 && (
-        <section className="painel">
-          <div className="cabeca"><h2>A receber</h2><span className="nota">Compras de outros nos seus cartões</span></div>
+          <h2>Pendências</h2>
           <ul className="lista">
             {receberPorPessoa.map((g) => {
               const avisou = g.itens.filter((l) => l.pagamentoInformadoEm);
               const quando = avisou.map((l) => l.pagamentoInformadoEm!).sort().pop();
               return (
-                <li key={g.pessoa}>
+                <li key={`r-${g.pessoa}`}>
                   <span className="avatar" aria-hidden="true">{nomeDe(g.pessoa).slice(0, 1)}</span>
                   <span className="texto">
-                    <b>{nomeDe(g.pessoa)} te deve</b>
+                    <b>{nomeDe(g.pessoa)} te deve {reais(g.total)}</b>
                     {avisou.length
                       ? <span className="destaque-texto">Disse que pagou {reais(avisou.reduce((s, l) => s + l.valor, 0))} em {dataCurta(quando!)}</span>
-                      : <span>{g.itens.length} {g.itens.length === 1 ? "compra" : "compras"}</span>}
+                      : <span>{g.itens.length} {g.itens.length === 1 ? "compra" : "compras"} nos seus cartões</span>}
                   </span>
-                  <span className="fim">
-                    <b className="valor">{reais(g.total)}</b>
-                    <button className="btn pequeno" onClick={() => setRecebendo(g.pessoa)}>{avisou.length ? "Confirmar" : "Recebi"}</button>
-                  </span>
+                  <button className="btn pequeno" onClick={() => setRecebendo(g.pessoa)}>{avisou.length ? "Confirmar" : "Recebi"}</button>
+                </li>
+              );
+            })}
+            {devoPorPessoa.map((g) => {
+              const falta = g.itens.some((l) => !l.pagamentoInformadoEm);
+              const aberto = abertos.includes(g.pessoa);
+              return (
+                <li key={`d-${g.pessoa}`} className="com-detalhe">
+                  <div className="linha-item">
+                    <button className="item" aria-expanded={aberto} onClick={() => setAbertos(aberto ? abertos.filter((x) => x !== g.pessoa) : [...abertos, g.pessoa])}>
+                      <span className="avatar deve" aria-hidden="true">{nomeDe(g.pessoa).slice(0, 1)}</span>
+                      <span className="texto">
+                        <b>Você deve {reais(g.total)} a {nomeDe(g.pessoa)}</b>
+                        <span>{falta ? `${g.itens.length} ${g.itens.length === 1 ? "compra" : "compras"}` : "Você avisou · esperando confirmar"} · {aberto ? "ocultar" : "ver"}</span>
+                      </span>
+                    </button>
+                    {falta && <button className="btn pequeno" onClick={() => setPagando(g.pessoa)}>Paguei</button>}
+                  </div>
+                  {aberto && (
+                    <ul className="lista sub">
+                      {g.itens.map((l) => {
+                        const c = queUso.find((x) => x.id === l.cartaoId);
+                        const texto = (
+                          <>
+                            <span className="texto"><b>{l.descricao}</b><span>{c ? `${nomeEmprestado(c, nomeDe(c.dono))} · ` : ""}fatura {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}{l.pagamentoInformadoEm ? ` · pago em ${dataCurta(l.pagamentoInformadoEm)}` : ""}</span></span>
+                            <span className="valor">{reais(l.valor)}</span>
+                          </>
+                        );
+                        // Só dá para corrigir compras feitas em cartões que você ainda usa.
+                        return <li key={l.id}>{c ? <button className="item" onClick={() => setEditando(l)}>{texto}</button> : texto}</li>;
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}
@@ -195,33 +175,26 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         </section>
       )}
 
-      {devoPorPessoa.length > 0 && (
+      {cartoesCredito.length > 0 && (
         <section className="painel">
-          <h2>Você deve</h2>
-          {devoPorPessoa.map((g) => (
-            <div key={g.pessoa} className="filho">
-              <div className="cabeca">
-                <b>Para {nomeDe(g.pessoa)} · {reais(g.total)}</b>
-                {g.itens.some((l) => !l.pagamentoInformadoEm)
-                  ? <button className="btn pequeno" onClick={() => setPagando(g.pessoa)}>Paguei</button>
-                  : <span className="nota">Esperando confirmar</span>}
-              </div>
-              <ul className="lista">
-                {g.itens.map((l) => {
-                  const c = queUso.find((x) => x.id === l.cartaoId);
-                  const texto = (
-                    <>
-                      <span className="texto"><b>{l.descricao}</b><span>{c ? `${c.banco} · ` : ""}{l.pagamento === "credito" ? `fatura ${dataCurta(l.data)}` : dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}{l.pagamentoInformadoEm ? ` · você pagou em ${dataCurta(l.pagamentoInformadoEm)}` : ""}</span></span>
-                      <span className="valor">{reais(l.valor)}</span>
-                    </>
-                  );
-                  // Só dá para corrigir compras feitas em cartões que você ainda usa.
-                  return <li key={l.id}>{c ? <button className="item" onClick={() => setEditando(l)}>{texto}</button> : texto}</li>;
-                })}
-              </ul>
-            </div>
-          ))}
-          <p className="nota">Compras suas no cartão de outra pessoa. Toque em “Paguei” quando pagar; elas saem daqui quando a pessoa confirmar.</p>
+          <h2>Cartões em {nomeMes(mes).split(" ")[0].toLowerCase()}</h2>
+          <ul className="lista">
+            {cartoesCredito.map((c) => {
+              const f = faturas.get(c.id);
+              const meu = !c.dono;
+              const aPagar = meu ? 0 : devo.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
+              return (
+                <li key={c.id}>
+                  <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
+                  <span className="texto">
+                    <b>{meu ? nomeCartao(c) : nomeEmprestado(c, nomeDe(c.dono))}</b>
+                    <span>{meu ? (f ? `vence ${dataCurta(f.data)}` : `vence dia ${c.diaVencimento}`) : `emprestado${aPagar ? ` · você deve ${reais(aPagar)}` : ""}`}</span>
+                  </span>
+                  {meu ? <b className="valor">{reais(f?.total ?? 0)}</b> : <button className="btn pequeno" onClick={() => novo(c)}>+ Compra</button>}
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 
@@ -271,7 +244,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           nomeDe={nomeDe}
           familia={familia}
           perguntaCasa={perguntaCasa && !editando.id}
-          cadastrarCartao={() => { setEditando(null); setGerenciarCartoes(true); }}
+          cadastrarCartao={() => { setEditando(null); setNovoCartao(true); }}
           fechar={() => setEditando(null)}
           salvar={async (itens, paraCasa) => {
             if (itens.length === 1) await repo.salvar(itens[0]);
@@ -329,10 +302,9 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           }}
         />
       )}
-      {gerenciarCartoes && (
-        <GerenciarCartoes cartoes={cartoes} eu={perfil} familia={familia} fechar={() => setGerenciarCartoes(false)}
-          salvar={async (c) => { await repo.salvarCartao(c); setAviso("Cartão salvo"); await carregar(); }}
-          remover={async (id) => { await repo.removerCartao(id); setAviso("Cartão removido"); await carregar(); }} />
+      {novoCartao && (
+        <FormCartao eu={perfil} familia={familia} inicial={CARTAO_NOVO} voltar={() => setNovoCartao(false)}
+          salvar={async (c) => { await repo.salvarCartao(c); setNovoCartao(false); setAviso("Cartão salvo"); await carregar(); }} />
       )}
       {aviso && <div className="aviso" role="status">{aviso}</div>}
     </>
@@ -440,7 +412,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
 
   return (
     <Folha
-      titulo={compraNoCartaoDeOutro && !editando ? `Compra no cartão de ${nomeDe(inicial.dono)}` : editando ? (ehParcelaExistente ? `Parcela ${inicial.parcela}/${inicial.parcelas}` : "Editar lançamento") : "Novo lançamento"}
+      titulo={compraNoCartaoDeOutro && !editando ? `Compra no ${cartao ? nomeEmprestado(cartao, nomeDe(inicial.dono)) : "cartão"}` : editando ? (ehParcelaExistente ? `Parcela ${inicial.parcela}/${inicial.parcelas}` : "Editar lançamento") : "Novo lançamento"}
       fechar={fechar}
       salvar={enviar}
       apagar={apagar}
@@ -454,7 +426,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
           <label className="campo" htmlFor="f-cartao">
             Cartão
             <select id="f-cartao" value={cartaoId} onChange={(e) => setCartaoId(e.target.value)}>
-              {opcoesCartao.map((c) => <option key={c.id} value={c.id}>{nomeCartao(c)}{c.dono ? ` (de ${nomeDe(c.dono)})` : ""}</option>)}
+              {opcoesCartao.map((c) => <option key={c.id} value={c.id}>{c.dono ? nomeEmprestado(c, nomeDe(c.dono)) : nomeCartao(c)}</option>)}
             </select>
           </label>
         ) : (
@@ -463,7 +435,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
       )}
 
       {donoCartao && (
-        <div className="previa"><p>Cartão de <b>{nomeDe(donoCartao)}</b>, sempre no crédito. A compra entra na fatura e aparece para vocês dois. Fica em “Você deve” até {nomeDe(donoCartao)} marcar que recebeu.</p></div>
+        <div className="previa"><p>Cartão <b>{cartao ? nomeEmprestado(cartao, nomeDe(donoCartao)) : ""}</b>, emprestado, sempre no crédito. A compra entra na fatura e aparece para vocês dois. Fica em “Você deve” até {nomeDe(donoCartao)} marcar que recebeu.</p></div>
       )}
 
       {comCartao && opcoesCartao.length > 0 && !inicial.reembolsoId && !donoCartao && (
@@ -561,35 +533,9 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
   );
 }
 
-function GerenciarCartoes({ cartoes, eu, familia, fechar, salvar, remover }: {
-  cartoes: Cartao[];
-  eu: Perfil;
-  familia: Perfil[];
-  fechar: () => void;
-  salvar: (c: Omit<Cartao, "id"> & { id?: string }) => Promise<void>;
-  remover: (id: string) => Promise<void>;
-}) {
-  const [editando, setEditando] = useState<(Omit<Cartao, "id"> & { id?: string }) | null>(cartoes.length ? null : { banco: "Bradesco", apelido: null, temCredito: true, temDebito: true, diaFechamento: null, diaVencimento: null, usadoPor: null });
-  if (editando) return <FormCartao eu={eu} familia={familia} inicial={editando} voltar={() => (cartoes.length ? setEditando(null) : fechar())} salvar={async (c) => { await salvar(c); setEditando(null); }} remover={editando.id ? async () => { await remover(editando.id!); setEditando(null); } : undefined} />;
-  return (
-    <Folha titulo="Meus cartões" fechar={fechar} textoSalvar="Pronto" salvar={async () => fechar()}>
-      <ul className="lista">
-        {cartoes.map((c) => (
-          <li key={c.id}>
-            <button type="button" className="item" onClick={() => setEditando(c)}>
-              <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
-              <span className="texto"><b>{nomeCartao(c)}</b><span>{[c.temCredito && `Crédito (fecha ${c.diaFechamento}, vence ${c.diaVencimento})`, c.temDebito && "Débito"].filter(Boolean).join(" · ")}</span></span>
-              <span className="link">Editar</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      <button type="button" className="btn fantasma" onClick={() => setEditando({ banco: "Bradesco", apelido: null, temCredito: true, temDebito: true, diaFechamento: null, diaVencimento: null, usadoPor: null })}>+ Adicionar cartão</button>
-    </Folha>
-  );
-}
+export const CARTAO_NOVO: Omit<Cartao, "id"> = { banco: "Bradesco", apelido: null, temCredito: true, temDebito: true, diaFechamento: null, diaVencimento: null, usadoPor: null };
 
-function FormCartao({ eu, familia, inicial, voltar, salvar, remover }: {
+export function FormCartao({ eu, familia, inicial, voltar, salvar, remover }: {
   eu: Perfil;
   familia: Perfil[];
   inicial: Omit<Cartao, "id"> & { id?: string };
