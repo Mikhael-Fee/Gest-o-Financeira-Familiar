@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase, dominioLogin } from "./supabase";
 import { usuarioParaEmail } from "./usuario";
-import { PERFIS_DEMO, lancamentosDemo } from "./demo";
+import { PERFIS_DEMO, casaDemo, lancamentosDemo } from "./demo";
+import { Casa } from "./Casa";
+import { repositorioCasaDemo, repositorioCasaSupabase } from "./repositorioCasa";
 import { Minhas } from "./Minhas";
 import { repositorioDemo, repositorioSupabase } from "./repositorio";
-import { ROTULO_PAPEL, podeGerenciarCasa, type Perfil } from "./tipos";
+import { ROTULO_PAPEL, type Perfil } from "./tipos";
 import { BotaoInstalar } from "./Instalar";
 
 type Sessao = { perfil: Perfil; demo: boolean };
@@ -121,6 +123,8 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
   const [aba, setAba] = useState<Aba>("minhas");
   const [familia, setFamilia] = useState<Perfil[]>(sessao.demo ? PERFIS_DEMO : []);
   const { perfil } = sessao;
+  // Na demonstração, a Casa é uma só para todos: trocar de pessoa mantém o que foi feito.
+  const repoCasa = useMemo(() => (sessao.demo ? repositorioCasaDemo(casaDemo()) : repositorioCasaSupabase), [sessao.demo]);
   const repo = useMemo(
     () => (sessao.demo ? repositorioDemo(lancamentosDemo(perfil.id)) : repositorioSupabase),
     [sessao.demo, perfil.id],
@@ -161,30 +165,10 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
       </header>
 
       <main className="conteudo wrap">
-        {aba === "minhas" && <Minhas key={perfil.id} repo={repo} nome={perfil.nome} />}
+        {aba === "minhas" && <Minhas key={perfil.id} repo={repo} perfil={perfil} casa={repoCasa} />}
 
-        {aba === "casa" && (
-          <>
-            <section className="destaque">
-              <span className="rotulo">Casa</span>
-              <p className="grande">Todos veem. {podeGerenciarCasa(perfil) ? "Você lança e paga as despesas." : "Os responsáveis lançam e pagam as despesas."}</p>
-            </section>
-            <section className="painel">
-              <h2>Quem faz parte</h2>
-              {familia.length === 0 && <p className="nota">Carregando a família…</p>}
-              <ul className="lista">
-                {familia.map((p) => (
-                  <li key={p.id}>
-                    <span className="avatar" aria-hidden="true">{p.nome.slice(0, 1)}</span>
-                    <span className="nome">{p.nome}{p.id === perfil.id ? " (você)" : ""}</span>
-                    <span className={`selo ${p.papel}`}>{ROTULO_PAPEL[p.papel]}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <EmBreve etapa={3} texto="Despesas da Casa, ajuda de cada um (dinheiro e VR/VA) e saldo do mês." />
-          </>
-        )}
+        {aba === "casa" && familia.length > 0 && <Casa key={perfil.id} repo={repoCasa} eu={perfil} familia={familia} />}
+        {aba === "casa" && familia.length === 0 && <p className="nota">Carregando a família…</p>}
 
         {aba === "familia" && (
           <>
@@ -194,6 +178,18 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
                 <dt>Nome</dt><dd>{perfil.nome}</dd>
                 <dt>Papel</dt><dd>{ROTULO_PAPEL[perfil.papel]}</dd>
               </dl>
+            </section>
+            <section className="painel">
+              <h2>Quem faz parte</h2>
+              <ul className="lista">
+                {familia.map((p) => (
+                  <li key={p.id}>
+                    <span className="avatar" aria-hidden="true">{p.nome.slice(0, 1)}</span>
+                    <span className="nome">{p.nome}{p.id === perfil.id ? " (você)" : ""}</span>
+                    <span className={`selo ${p.papel}`}>{ROTULO_PAPEL[p.papel]}</span>
+                  </li>
+                ))}
+              </ul>
             </section>
             <EmBreve etapa={4} texto="Escolher se você mostra suas finanças para a família. Começa tudo privado." />
             <BotaoInstalar />

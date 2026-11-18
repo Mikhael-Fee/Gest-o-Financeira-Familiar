@@ -2,8 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATEGORIAS, hojeISO, mesDe, nomeMes, resumir, somarMes, type Lancamento, type Meio, type Tipo } from "./lancamentos";
 import { lerValor, reais } from "./dinheiro";
 import type { Repositorio, NovoLancamento } from "./repositorio";
+import type { RepositorioCasa } from "./repositorioCasa";
+import type { Forma } from "./casa";
+import { podeGerenciarCasa, type Perfil } from "./tipos";
 
-export function Minhas({ repo, nome }: { repo: Repositorio; nome: string }) {
+type ParaCasa = Forma | "nao";
+
+export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perfil; casa: RepositorioCasa }) {
+  const nome = perfil.nome;
+  const perguntaCasa = !podeGerenciarCasa(perfil);
   const [mes, setMes] = useState(() => mesDe(hojeISO()));
   const [lista, setLista] = useState<Lancamento[] | null>(null);
   const [erro, setErro] = useState("");
@@ -97,11 +104,13 @@ export function Minhas({ repo, nome }: { repo: Repositorio; nome: string }) {
       {editando && (
         <Formulario
           inicial={editando}
+          perguntaCasa={perguntaCasa && !editando.id}
           fechar={() => setEditando(null)}
-          salvar={async (l) => {
+          salvar={async (l, paraCasa) => {
             await repo.salvar(l);
+            if (paraCasa !== "nao") await casa.informarAjuda(perfil.id, { data: l.data, descricao: l.descricao, valor: l.valor, meio: l.meio, forma: paraCasa });
             setEditando(null);
-            setAviso(l.id ? "Lançamento atualizado" : "Lançamento salvo");
+            setAviso(paraCasa !== "nao" ? "Salvo e informado na Casa" : l.id ? "Lançamento atualizado" : "Lançamento salvo");
             if (mesDe(l.data) !== mes) setMes(mesDe(l.data));
             else await carregar();
           }}
@@ -122,10 +131,11 @@ export function Minhas({ repo, nome }: { repo: Repositorio; nome: string }) {
   );
 }
 
-function Formulario({ inicial, fechar, salvar, apagar }: {
+function Formulario({ inicial, perguntaCasa, fechar, salvar, apagar }: {
   inicial: NovoLancamento;
+  perguntaCasa: boolean;
   fechar: () => void;
-  salvar: (l: NovoLancamento) => Promise<void>;
+  salvar: (l: NovoLancamento, paraCasa: ParaCasa) => Promise<void>;
   apagar?: () => Promise<void>;
 }) {
   const [tipo, setTipo] = useState<Tipo>(inicial.tipo);
@@ -137,6 +147,8 @@ function Formulario({ inicial, fechar, salvar, apagar }: {
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [confirmarApagar, setConfirmarApagar] = useState(false);
+  const [paraCasa, setParaCasa] = useState<ParaCasa>("enviado");
+  const mostrarCasa = perguntaCasa && tipo === "saida" && categoria === "Casa";
 
   const categorias = CATEGORIAS[tipo];
   useEffect(() => {
@@ -152,7 +164,7 @@ function Formulario({ inicial, fechar, salvar, apagar }: {
     setErro("");
     setOcupado(true);
     try {
-      await salvar({ id: inicial.id, tipo, meio, descricao: descricao.trim(), valor: centavos, categoria, data });
+      await salvar({ id: inicial.id, tipo, meio, descricao: descricao.trim(), valor: centavos, categoria, data }, mostrarCasa ? paraCasa : "nao");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível salvar.");
       setOcupado(false);
@@ -203,6 +215,18 @@ function Formulario({ inicial, fechar, salvar, apagar }: {
             {categorias.map((c) => <option key={c}>{c}</option>)}
           </select>
         </label>
+
+        {mostrarCasa && (
+          <div className="campo">
+            Também na aba Casa?
+            <div className="segmento tres-op" role="group" aria-label="Também na aba Casa">
+              <button type="button" aria-pressed={paraCasa === "enviado"} onClick={() => setParaCasa("enviado")}>Enviei para a Casa</button>
+              <button type="button" aria-pressed={paraCasa === "pago_direto"} onClick={() => setParaCasa("pago_direto")}>Paguei despesa da Casa</button>
+              <button type="button" aria-pressed={paraCasa === "nao"} onClick={() => setParaCasa("nao")}>Não contar</button>
+            </div>
+            <span className="nota">Conta como sua ajuda do mês. Seus pais confirmam.</span>
+          </div>
+        )}
 
         {erro && <p className="erro" role="alert">{erro}</p>}
 
