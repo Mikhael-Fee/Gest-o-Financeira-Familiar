@@ -4,6 +4,9 @@ import { ROTULO_PAPEL, type Perfil } from "./tipos";
 import { nomeCartao, nomeEmprestado, type Cartao } from "./cartoes";
 import { CARTAO_NOVO, FormCartao } from "./Minhas";
 import { BotaoInstalar } from "./Instalar";
+import { reais } from "./dinheiro";
+import type { NovoRecorrente, Recorrente } from "./fixos";
+import { FIXO_NOVO, FormFixo, descreverFixo } from "./Fixos";
 
 type CartaoEditavel = Omit<Cartao, "id"> & { id?: string };
 
@@ -13,12 +16,15 @@ export function Ajustes({ repo, perfil, familia, sair }: { repo: Repositorio; pe
   const [queUso, setQueUso] = useState<Cartao[]>([]);
   const [editando, setEditando] = useState<CartaoEditavel | null>(null);
   const [erro, setErro] = useState("");
+  const [fixos, setFixos] = useState<Recorrente[]>([]);
+  const [fixoEditando, setFixoEditando] = useState<NovoRecorrente | null>(null);
   const nomeDe = (id?: string | null) => familia.find((p) => p.id === id)?.nome ?? "Alguém";
 
   const carregar = useCallback(async () => {
     try {
-      const [c, q] = await Promise.all([repo.cartoes(), repo.cartoesQueUso()]);
+      const [c, q, f] = await Promise.all([repo.cartoes(), repo.cartoesQueUso(), repo.recorrentes()]);
       setCartoes(c);
+      setFixos(f);
       setQueUso(q);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar os cartões.");
@@ -56,6 +62,25 @@ export function Ajustes({ repo, perfil, familia, sair }: { repo: Repositorio; pe
         </ul>
       </section>
 
+      <section className="painel">
+        <div className="cabeca">
+          <h2>Lançamentos fixos</h2>
+          <button className="btn pequeno" onClick={() => setFixoEditando({ ...FIXO_NOVO })}>+ Fixo</button>
+        </div>
+        {fixos.length === 0 && <p className="nota">Salário, aluguel, academia, assinaturas… Cadastre uma vez e lance todo mês com um toque.</p>}
+        <ul className="lista">
+          {fixos.map((f) => (
+            <li key={f.id}>
+              <button type="button" className="item" onClick={() => setFixoEditando(f)}>
+                <span className={`icone ${f.tipo} ${f.meio}`} aria-hidden="true">{f.categoria.slice(0, 2)}</span>
+                <span className="texto"><b>{f.descricao}</b><span>{descreverFixo(f, cartoes ?? [])}</span></span>
+                <span className={`valor ${f.tipo}`}>{f.tipo === "entrada" ? "+" : "−"}{reais(f.valor)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {queUso.length > 0 && (
         <section className="painel">
           <h2>Cartões emprestados para você</h2>
@@ -82,6 +107,11 @@ export function Ajustes({ repo, perfil, familia, sair }: { repo: Repositorio; pe
 
       <BotaoInstalar />
 
+      {fixoEditando && (
+        <FormFixo inicial={fixoEditando} cartoes={cartoes ?? []} fechar={() => setFixoEditando(null)}
+          salvar={async (r) => { await repo.salvarRecorrente(r); setFixoEditando(null); await carregar(); }}
+          parar={fixoEditando.id ? async () => { await repo.pararRecorrente(fixoEditando.id!); setFixoEditando(null); await carregar(); } : undefined} />
+      )}
       {editando && (
         <FormCartao eu={perfil} familia={familia} inicial={editando} voltar={() => setEditando(null)}
           salvar={async (c) => { await repo.salvarCartao(c); setEditando(null); await carregar(); }}

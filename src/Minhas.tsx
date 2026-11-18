@@ -8,6 +8,8 @@ import { podeGerenciarCasa, type Perfil } from "./tipos";
 import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, nomeEmprestado, vencimentoDaCompra, type Cartao } from "./cartoes";
 import { Folha, Segmento } from "./Folha";
 import { CartaoDetalhe } from "./CartaoDetalhe";
+import { lancamentoDoFixo, pendentesDoMes, situacaoLimites, type Limites, type Recorrente } from "./fixos";
+import { gastosPorCategoria } from "./resumo";
 
 type ParaCasa = Forma | "nao";
 type Como = "dinheiro" | "debito" | "credito" | "beneficio";
@@ -28,6 +30,9 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const [novoCartao, setNovoCartao] = useState(false);
   const [vendoCartao, setVendoCartao] = useState<Cartao | null>(null);
   const [todosCartoes, setTodosCartoes] = useState(false);
+  const [fixos, setFixos] = useState<Recorrente[]>([]);
+  const [lancados, setLancados] = useState<string[]>([]);
+  const [limites, setLimites] = useState<Limites>({});
   const [versao, setVersao] = useState(0); // recarrega a tela do cartão depois de editar
   const [abertos, setAbertos] = useState<string[]>([]); // pendências abertas
   const [aReceber, setAReceber] = useState<Lancamento[]>([]);
@@ -39,7 +44,12 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const carregar = useCallback(async () => {
     setErro("");
     try {
-      const [l, c, ar, dv, qu] = await Promise.all([repo.listar(mes), repo.cartoes(), repo.aReceber(), repo.devo(), repo.cartoesQueUso()]);
+      const [l, c, ar, dv, qu, fx, fl, lm] = await Promise.all([
+        repo.listar(mes), repo.cartoes(), repo.aReceber(), repo.devo(), repo.cartoesQueUso(), repo.recorrentes(), repo.fixosLancados(mes), repo.limites(),
+      ]);
+      setFixos(fx);
+      setLancados(fl);
+      setLimites(lm);
       setLista(l);
       setCartoes(c);
       setQueUso(qu);
@@ -85,6 +95,17 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const receberPorPessoa = agrupar(aReceber, (l) => l.deQuem!);
   const devoPorPessoa = agrupar(devo, (l) => l.dono);
   const pendencias = receberPorPessoa.length + devoPorPessoa.length;
+  const pendentes = pendentesDoMes(fixos, lancados, mes, mesDe(hojeISO()));
+  const alertas = useMemo(() => situacaoLimites(limites, gastosPorCategoria(lista ?? [], mes)).filter((x) => x.estado !== "ok"), [limites, lista, mes]);
+  const lancarFixos = async (rs: Recorrente[]) => {
+    try {
+      for (const f of rs) await repo.salvar(lancamentoDoFixo(f, mes, cartoes.find((c) => c.id === f.cartaoId)));
+      setAviso(rs.length > 1 ? `${rs.length} fixos lançados` : `${rs[0].descricao} lançado`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Erro ao lançar.");
+    }
+    await carregar();
+  };
   // Só os cartões com fatura no mês e os de outra pessoa que você usa (para lançar compra).
   const cartoesCredito = [...cartoes.filter((c) => todosCartoes || faturas.has(c.id)), ...queUso.filter((c) => c.temCredito)];
   const escondidos = cartoes.filter((c) => !faturas.has(c.id)).length;
@@ -125,6 +146,52 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
             <div><span className="mini">Usei ou enviei</span><b>{reais(r.beneficioGasto)}</b></div>
             <div><span className="mini">Sobrou</span><b>{reais(r.beneficioSobra)}</b></div>
           </div>
+        </section>
+      )}
+
+      {alertas.length > 0 && (
+        <section className="painel">
+          <h2>Limites</h2>
+          <ul className="lista">
+            {alertas.map((a) => (
+              <li key={a.categoria}>
+                <span className={`selo ${a.estado}`} aria-hidden="true">{a.estado === "passou" ? "!" : "⚠"}</span>
+                <span className="texto">
+                  <b>{a.categoria}</b>
+                  <span>{a.estado === "passou" ? `Passou ${reais(a.gasto - a.limite)} do limite` : `Perto do limite: ${Math.round(a.parte * 100)}% usado`}</span>
+                </span>
+                <span className="fim"><b className="valor">{reais(a.gasto)}</b><span className="mini-cinza">de {reais(a.limite)}</span></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {pendentes.length > 0 && (
+        <section className="painel">
+          <div className="cabeca">
+            <h2>Fixos de {nomeMes(mes).split(" ")[0].toLowerCase()}</h2>
+            {pendentes.length > 1 && <button className="btn pequeno" onClick={() => lancarFixos(pendentes)}>Lançar todos</button>}
+          </div>
+          <ul className="lista">
+            {pendentes.map((f) => {
+              const c = cartoes.find((x) => x.id === f.cartaoId);
+              return (
+                <li key={f.id}>
+                  <button className="item" onClick={() => setEditando(lancamentoDoFixo(f, mes, c))}>
+                    <span className={`icone ${f.tipo} ${f.meio}`} aria-hidden="true">{f.categoria.slice(0, 2)}</span>
+                    <span className="texto">
+                      <b>{f.descricao}</b>
+                      <span>dia {f.dia}{f.pagamento ? ` · ${c ? c.banco : ""} ${f.pagamento === "credito" ? "crédito" : "débito"}` : f.meio === "beneficio" ? " · VR/VA" : ""}</span>
+                    </span>
+                    <span className={`valor ${f.tipo}`}>{f.tipo === "entrada" ? "+" : "−"}{reais(f.valor)}</span>
+                  </button>
+                  <button className="btn pequeno fantasma" onClick={() => lancarFixos([f])}>Lançar</button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="nota">Toque no nome para mudar o valor antes de lançar. Os fixos ficam em Ajustes.</p>
         </section>
       )}
 
@@ -278,13 +345,22 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           perguntaCasa={perguntaCasa && !editando.id}
           cadastrarCartao={() => { setEditando(null); setNovoCartao(true); }}
           fechar={() => setEditando(null)}
-          salvar={async (itens, paraCasa) => {
+          salvar={async (itens, paraCasa, repetir) => {
+            if (repetir) {
+              const p = itens[0];
+              const d = p.dataCompra ?? p.data;
+              const id = await repo.salvarRecorrente({
+                descricao: p.descricao, categoria: p.categoria, valor: p.valor, tipo: p.tipo, meio: p.meio, pagamento: p.pagamento ?? null,
+                cartaoId: p.cartaoId ?? null, dia: Number(d.slice(8, 10)), desde: d.slice(0, 7), ativo: true,
+              });
+              itens = itens.map((i) => ({ ...i, recorrenteId: id, recorrenteMes: d.slice(0, 7) }));
+            }
             if (itens.length === 1) await repo.salvar(itens[0]);
             else await repo.salvarVarios(itens);
             const l = itens[0];
             if (paraCasa !== "nao") await casa.informarAjuda(perfil.id, { data: l.dataCompra ?? l.data, descricao: l.descricao, valor: l.valor, meio: l.meio, forma: paraCasa });
             setEditando(null);
-            setAviso(l.dono ? `Lançado no cartão de ${nomeDe(l.dono)}` : itens.length > 1 ? `${itens.length} parcelas lançadas` : paraCasa !== "nao" ? "Salvo e informado na Casa" : l.id ? "Lançamento atualizado" : "Lançamento salvo");
+            setAviso(repetir ? "Salvo e vai se repetir todo mês" : l.dono ? `Lançado no cartão de ${nomeDe(l.dono)}` : itens.length > 1 ? `${itens.length} parcelas lançadas` : paraCasa !== "nao" ? "Salvo e informado na Casa" : l.id ? "Lançamento atualizado" : "Lançamento salvo");
             if (!l.dono && mesDe(l.data) !== mes) setMes(mesDe(l.data));
             else await carregar();
           }}
@@ -352,7 +428,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
   perguntaCasa: boolean;
   cadastrarCartao: () => void;
   fechar: () => void;
-  salvar: (itens: NovoLancamento[], paraCasa: ParaCasa) => Promise<void>;
+  salvar: (itens: NovoLancamento[], paraCasa: ParaCasa, repetir: boolean) => Promise<void>;
   apagar?: () => Promise<void>;
 }) {
   const editando = Boolean(inicial.id);
@@ -370,6 +446,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
   const [mesFatura, setMesFatura] = useState(mesDe(hojeISO()));
   const [paraCasa, setParaCasa] = useState<ParaCasa>("enviado");
   const [deQuem, setDeQuem] = useState(inicial.deQuem ?? "");
+  const [repetir, setRepetir] = useState(false);
 
   const categorias = CATEGORIAS[tipo];
   useEffect(() => {
@@ -406,6 +483,8 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
     return gerarParcelas(primeiro, cartao.diaVencimento, emAndamento ? nAtual : 1, nParcelas);
   }, [credito, cartao, data, emAndamento, mesFatura, nAtual, nParcelas]);
 
+  // Repetir todo mês: só lançamento novo, sem parcelas, seu, que ainda não veio de um fixo.
+  const podeRepetir = !editando && !parcelado && !donoCartao && !(comCartao && deQuem) && !inicial.recorrenteId;
   const mostrarCasa = perguntaCasa && tipo === "saida" && categoria === "Casa" && !parcelado && !(comCartao && deQuem) && !donoCartao;
 
   async function enviar(): Promise<string | void> {
@@ -420,11 +499,12 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
       cartaoId: tipo === "saida" && (como === "debito" || como === "credito") ? cartaoId : null,
       compraId: inicial.compraId ?? null, parcela: inicial.parcela ?? null, parcelas: inicial.parcelas ?? null, dataCompra: inicial.dataCompra ?? null,
       deQuem: donoCartao ? eu.id : comCartao && deQuem ? deQuem : null, reembolsoId: inicial.reembolsoId ?? null,
+      recorrenteId: inicial.recorrenteId ?? null, recorrenteMes: inicial.recorrenteMes ?? null,
       ...(donoCartao ? { dono: donoCartao } : {}),
     };
     if (editando) {
       // Editar mexe só nesta linha (numa compra parcelada, só nesta parcela).
-      return salvar([{ ...base, data: ehParcelaExistente ? inicial.data : data, dataCompra: ehParcelaExistente ? inicial.dataCompra ?? null : base.dataCompra }], "nao");
+      return salvar([{ ...base, data: ehParcelaExistente ? inicial.data : data, dataCompra: ehParcelaExistente ? inicial.dataCompra ?? null : base.dataCompra }], "nao", false);
     }
     if (credito) {
       if (!previa) return "Confira o cartão e a data.";
@@ -433,9 +513,9 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
         ...base, data: p.data, dataCompra: emAndamento ? null : data, compraId,
         parcela: nParcelas > 1 ? p.parcela : null, parcelas: nParcelas > 1 ? p.parcelas : null,
       }));
-      return salvar(itens, mostrarCasa ? paraCasa : "nao");
+      return salvar(itens, mostrarCasa ? paraCasa : "nao", podeRepetir && repetir);
     }
-    return salvar([base], mostrarCasa ? paraCasa : "nao");
+    return salvar([base], mostrarCasa ? paraCasa : "nao", podeRepetir && repetir);
   }
 
   const comoOpcoes: [Como, string][] = tipo === "saida"
@@ -444,7 +524,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
 
   return (
     <Folha
-      titulo={compraNoCartaoDeOutro && !editando ? `Compra no ${cartao ? nomeEmprestado(cartao, nomeDe(inicial.dono)) : "cartão"}` : editando ? (ehParcelaExistente ? `Parcela ${inicial.parcela}/${inicial.parcelas}` : "Editar lançamento") : "Novo lançamento"}
+      titulo={inicial.recorrenteId && !editando ? `Lançar fixo: ${inicial.descricao}` : compraNoCartaoDeOutro && !editando ? `Compra no ${cartao ? nomeEmprestado(cartao, nomeDe(inicial.dono)) : "cartão"}` : editando ? (ehParcelaExistente ? `Parcela ${inicial.parcela}/${inicial.parcelas}` : "Editar lançamento") : "Novo lançamento"}
       fechar={fechar}
       salvar={enviar}
       apagar={apagar}
@@ -560,6 +640,13 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
           <span className="nota">Conta como sua ajuda do mês. Seus pais confirmam.</span>
         </div>
       )}
+      {podeRepetir && (
+        <label className="campo marcar" htmlFor="f-repetir">
+          <input id="f-repetir" type="checkbox" checked={repetir} onChange={(e) => setRepetir(e.target.checked)} />
+          Repetir todo mês (ex.: salário, aluguel, assinatura)
+        </label>
+      )}
+      {inicial.recorrenteId && !editando && <p className="nota">Lançamento fixo de {nomeMes(inicial.recorrenteMes ?? "").split(" ")[0].toLowerCase()}. Mude o valor se veio diferente.</p>}
       {ehParcelaExistente && <p className="nota">Alterar muda só esta parcela. Apagar remove todas as parcelas desta compra.</p>}
     </Folha>
   );

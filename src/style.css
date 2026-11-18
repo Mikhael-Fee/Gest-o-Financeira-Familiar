@@ -211,3 +211,18 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .coluna.tocavel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ver-todos { align-self: flex-start; }
 .seta-item { color: var(--muted); font-size: 20px; margin-left: 4px; }
+
+/* Etapa 7: limites (estado sempre com ícone e texto, nunca só cor) */
+.selo { flex: none; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font: 800 14px var(--body); }
+.selo.perto { background: var(--benefit-soft); color: var(--benefit); }
+.selo.passou { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+.selo.ok { background: var(--accent-soft); color: var(--accent); }
+.limite-barra { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
+.limite-barra span { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; background: var(--accent); min-width: 4px; }
+.limite-barra.perto span { background: var(--benefit); }
+.limite-barra.passou span { background: var(--bad); }
+.limites-form { display: flex; flex-direction: column; gap: 8px; }
+.linha-campo { flex-direction: row !important; align-items: center; justify-content: space-between; gap: 12px; }
+.linha-campo input { max-width: 140px; text-align: right; }
+.com-selo { display: inline-flex; align-items: center; gap: 8px; }
+.com-selo .selo { width: 22px; height: 22px; font-size: 12px; border-radius: 7px; }
