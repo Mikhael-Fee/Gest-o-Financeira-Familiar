@@ -31,3 +31,22 @@ describe("limites", () => {
     expect(s.map((x) => [x.categoria, x.estado])).toEqual([["C", "passou"], ["B", "perto"], ["A", "ok"], ["D", "ok"]]);
   });
 });
+
+describe("média e saldo acumulado", () => {
+  it("fixo pela média usa os últimos 3 meses antes do mês", async () => {
+    const { valorSugerido } = await import("../src/fixos");
+    const f = fixo("x", { valor: 40000, usarMedia: true });
+    const h = { x: [{ mes: "2026-07", valor: 10000 }, { mes: "2026-08", valor: 30000 }, { mes: "2026-09", valor: 45000 }, { mes: "2026-10", valor: 60000 }, { mes: "2026-11", valor: 1 }] };
+    expect(valorSugerido(f, h, "2026-11")).toEqual({ valor: 45000, media: true, meses: 3 });
+    expect(valorSugerido(f, {}, "2026-11")).toEqual({ valor: 40000, media: false, meses: 0 });
+    expect(valorSugerido({ ...f, usarMedia: false }, h, "2026-11").valor).toBe(40000);
+  });
+  it("saldo acumulado = saldo inicial + sobras em dinheiro desde o mês dele", async () => {
+    const { saldoAcumulado } = await import("../src/fixos");
+    const l = (data: string, valor: number, tipo: "entrada" | "saida", meio: "dinheiro" | "beneficio" = "dinheiro") =>
+      ({ id: data + valor, data, descricao: "", categoria: "", valor, tipo, meio });
+    const lista = [l("2026-08-05", 99999, "entrada"), l("2026-09-05", 300000, "entrada"), l("2026-09-10", 100000, "saida"), l("2026-10-05", 300000, "entrada"), l("2026-10-08", 70000, "saida", "beneficio"), l("2026-11-05", 50000, "saida")];
+    expect(saldoAcumulado(lista, { mes: "2026-09", valor: 120000 }, "2026-10")).toBe(120000 + 200000 + 300000);
+    expect(saldoAcumulado(lista, null, "2026-11")).toBe(99999 + 200000 + 300000 - 50000);
+  });
+});

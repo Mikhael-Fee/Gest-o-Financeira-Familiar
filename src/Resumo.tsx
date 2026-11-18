@@ -7,6 +7,8 @@ import type { Despesa } from "./casa";
 import { compromissos, gastosPorCategoria, maioresGastos, sobraPorMes } from "./resumo";
 import { situacaoLimites, type Limites } from "./fixos";
 import { FormLimites } from "./Fixos";
+import { comCor, corBanco, corCategoria } from "./cores";
+import { nomeCartao, type Cartao } from "./cartoes";
 
 export const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 export const mesCurto = (m: string) => MESES_CURTOS[Number(m.slice(5, 7)) - 1];
@@ -25,6 +27,8 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
   const [contasCasa, setContasCasa] = useState<Despesa[]>([]);
   const [erro, setErro] = useState("");
   const [limites, setLimites] = useState<Limites>({});
+  const [cartoes, setCartoes] = useState<Cartao[]>([]);
+  useEffect(() => { repo.cartoes().then(setCartoes).catch(() => setCartoes([])); }, [repo]);
   const [editandoLimites, setEditandoLimites] = useState(false);
   useEffect(() => { repo.limites().then(setLimites).catch(() => setLimites({})); }, [repo]);
 
@@ -55,6 +59,8 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
   const totalFuturo = futuro.reduce((s, c) => s + c.valor, 0);
   const totalCasa = contasCasa.reduce((s, d) => s + d.valor, 0);
   const situacao = situacaoLimites(limites, categorias);
+  const cartoesCredito = cartoes.filter((k) => k.temCredito);
+  const maxFatura = Math.max(1, ...cartoesCredito.map((k) => (lista ?? []).filter((l) => l.cartaoId === k.id && l.pagamento === "credito" && mesDe(l.data) === mes).reduce((s2, l) => s2 + l.valor, 0)));
   const variacao = totalAntes ? Math.round(((total - totalAntes) / totalAntes) * 100) : null;
 
   return (
@@ -91,7 +97,7 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
               {situacao.map((s) => (
                 <li key={s.categoria}>
                   <div className="barra-topo">
-                    <span className="com-selo"><span className={`selo ${s.estado}`} aria-hidden="true">{s.estado === "passou" ? "!" : s.estado === "perto" ? "⚠" : "✓"}</span>{s.categoria}</span>
+                    <span className="com-selo"><span className={`estado-icone ${s.estado}`} aria-hidden="true">{s.estado === "passou" ? "!" : s.estado === "perto" ? "⚠" : "✓"}</span>{s.categoria}</span>
                     <b>{reais(s.gasto)} <span className="mini-cinza">de {reais(s.limite)}</span></b>
                   </div>
                   <div className={`limite-barra ${s.estado}`} role="meter" aria-valuemin={0} aria-valuemax={s.limite} aria-valuenow={Math.min(s.gasto, s.limite)} aria-label={`${s.categoria}: ${reais(s.gasto)} de ${reais(s.limite)}`}>
@@ -113,9 +119,9 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
                 const delta = f.valor - f.anterior;
                 return (
                   <li key={f.categoria} title={`${f.categoria}: ${reais(f.valor)} (em ${mesSo(somarMes(mes, -1))}: ${reais(f.anterior)})`}>
-                    <div className="barra-topo"><span>{f.categoria}</span><b>{reais(f.valor)}</b></div>
+                    <div className="barra-topo"><span className="com-selo"><span className="ponto-cor" style={comCor(corCategoria(f.categoria))} aria-hidden="true" />{f.categoria}</span><b>{reais(f.valor)}</b></div>
                     <div className="trilho">
-                      <span className="preenche" style={{ width: `${(f.valor / maxCat) * 100}%` }} />
+                      <span className="preenche" style={{ width: `${(f.valor / maxCat) * 100}%`, background: corCategoria(f.categoria) }} />
                       {f.anterior > 0 && <span className="marca-antes" style={{ left: `${(f.anterior / maxCat) * 100}%` }} aria-hidden="true" />}
                     </div>
                     <span className="mini-cinza">
@@ -131,14 +137,37 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
           {maiores.length > 0 && (
             <section className="painel">
               <h2>Maiores gastos</h2>
-              <ol className="lista numerada">
+              <ol className="lista">
                 {maiores.map((l) => (
                   <li key={l.id}>
+                    <span className="icone com-cor" style={comCor(corCategoria(l.categoria))} aria-hidden="true">{l.categoria.slice(0, 2)}</span>
                     <span className="texto"><b>{l.descricao}</b><span>{l.categoria} · {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · parcela ${l.parcela}/${l.parcelas}` : ""}</span></span>
                     <span className="valor">{reais(l.valor)}</span>
                   </li>
                 ))}
               </ol>
+            </section>
+          )}
+
+          {cartoesCredito.length > 0 && (
+            <section className="painel">
+              <h2>Cartões em {mesSo(mes)}</h2>
+              <ul className="barras">
+                {cartoesCredito.map((k) => {
+                  const fatura = (lista ?? []).filter((l) => l.cartaoId === k.id && l.pagamento === "credito" && mesDe(l.data) === mes).reduce((s2, l) => s2 + l.valor, 0);
+                  const depois = futuro.reduce((s2, c) => s2 + c.itens.filter((l) => l.cartaoId === k.id).reduce((t, l) => t + l.valor, 0), 0);
+                  return (
+                    <li key={k.id}>
+                      <div className="barra-topo">
+                        <span className="com-selo"><span className="icone cartao com-cor mini" style={comCor(corBanco(k.banco))} aria-hidden="true">{k.banco.slice(0, 2)}</span>{nomeCartao(k)}</span>
+                        <b>{reais(fatura)}</b>
+                      </div>
+                      <div className="trilho"><span className="preenche" style={{ width: `${(fatura / maxFatura) * 100}%`, background: corBanco(k.banco) }} /></div>
+                      <span className="mini-cinza">{k.diaVencimento ? `vence dia ${k.diaVencimento}` : ""}{depois > 0 ? ` · ${reais(depois)} já marcados nos próximos meses` : ""}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             </section>
           )}
 
@@ -149,7 +178,11 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
             ) : (
               <>
                 <p className="nota">{reais(totalFuturo)} já comprometidos até {mesSo(futuro[futuro.length - 1].mes)}.</p>
-                <Colunas pontos={futuro.map((c) => ({ mes: c.mes, valor: c.valor }))} rotulo="Faturas já marcadas por mês" />
+                <Colunas rotulo="Faturas já marcadas por mês, por cartão" pontos={futuro.map((c) => ({
+                  mes: c.mes, valor: c.valor,
+                  partes: cartoesCredito.map((k) => ({ nome: k.banco, cor: corBanco(k.banco), valor: c.itens.filter((l) => l.cartaoId === k.id).reduce((s2, l) => s2 + l.valor, 0) })).filter((x) => x.valor > 0),
+                }))} />
+                <Legenda itens={cartoesCredito.filter((k) => futuro.some((c) => c.itens.some((l) => l.cartaoId === k.id))).map((k) => ({ nome: nomeCartao(k), cor: corBanco(k.banco) }))} />
               </>
             )}
           </section>
@@ -186,20 +219,36 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
 }
 
 /** Colunas simples com o valor em cima: positivo sobe, negativo desce da linha do zero. */
-export function Colunas({ pontos, rotulo, destacar, aoTocar }: { pontos: { mes: string; valor: number }[]; rotulo: string; destacar?: string; aoTocar?: (mes: string) => void }) {
+type Parte = { nome: string; cor: string; valor: number };
+
+/** Legenda de cores (sempre junto de gráfico com mais de uma série). */
+export function Legenda({ itens }: { itens: { nome: string; cor: string }[] }) {
+  if (itens.length < 2) return null;
+  return (
+    <ul className="legenda-cores">
+      {itens.map((i) => <li key={i.nome}><span className="ponto-cor" style={comCor(i.cor)} aria-hidden="true" />{i.nome}</li>)}
+    </ul>
+  );
+}
+
+export function Colunas({ pontos, rotulo, destacar, aoTocar, cor }: { pontos: { mes: string; valor: number; partes?: Parte[] }[]; rotulo: string; destacar?: string; aoTocar?: (mes: string) => void; cor?: string }) {
   const max = Math.max(1, ...pontos.map((p) => Math.abs(p.valor)));
   const temNegativo = pontos.some((p) => p.valor < 0);
   // Com muitas colunas os valores não cabem: mostra só o do mês destacado.
   const rotular = (m: string) => pontos.length <= 6 || m === destacar;
   return (
-    <figure className="colunas" aria-label={rotulo}>
+    <figure className="colunas" aria-label={rotulo} style={cor ? comCor(cor) : undefined}>
       <div className={`colunas-area${temNegativo ? " com-negativo" : ""}`}>
         {pontos.map((p) => (
           <div key={p.mes} className={`coluna${p.mes === destacar ? " atual" : ""}${aoTocar ? " tocavel" : ""}`} title={`${nomeMes(p.mes)}: ${reais(p.valor)}`}
             {...(aoTocar ? { role: "button", tabIndex: 0, "aria-label": `${nomeMes(p.mes)}: ${reais(p.valor)}`, "aria-pressed": p.mes === destacar, onClick: () => aoTocar(p.mes), onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && aoTocar(p.mes) } : {})}>
             <div className="metade cima">
               {p.valor > 0 && rotular(p.mes) && <span className="rotulo-col">{curto(p.valor)}</span>}
-              {p.valor > 0 && <span className="pilar" style={{ height: `${(p.valor / max) * 100}%` }} />}
+              {p.valor > 0 && (p.partes && p.partes.length ? (
+                <span className="pilar empilhado" style={{ height: `${(p.valor / max) * 100}%` }}>
+                  {p.partes.map((x) => <span key={x.nome} title={`${x.nome}: ${reais(x.valor)}`} style={{ flexGrow: x.valor, background: x.cor }} />)}
+                </span>
+              ) : <span className="pilar" style={{ height: `${(p.valor / max) * 100}%` }} />)}
               {p.valor === 0 && <span className="rotulo-col zero">—</span>}
             </div>
             {temNegativo && (
@@ -214,7 +263,7 @@ export function Colunas({ pontos, rotulo, destacar, aoTocar }: { pontos: { mes: 
       </div>
       <table className="so-leitor">
         <caption>{rotulo}</caption>
-        <tbody>{pontos.map((p) => <tr key={p.mes}><th>{nomeMes(p.mes)}</th><td>{reais(p.valor)}</td></tr>)}</tbody>
+        <tbody>{pontos.map((p) => <tr key={p.mes}><th>{nomeMes(p.mes)}</th><td>{reais(p.valor)}{p.partes?.length ? ` (${p.partes.map((x) => `${x.nome} ${reais(x.valor)}`).join(", ")})` : ""}</td></tr>)}</tbody>
       </table>
     </figure>
   );

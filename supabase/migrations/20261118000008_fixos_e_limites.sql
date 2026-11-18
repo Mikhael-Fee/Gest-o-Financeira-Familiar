@@ -1,4 +1,4 @@
--- Etapa 7: lançamentos fixos (repetem todo mês) e limite de gasto por categoria.
+-- Etapa 7: lançamentos fixos (repetem todo mês), limite de gasto por categoria e saldo inicial.
 -- Só cria coisas novas, sem DROP. Tudo é privado: cada pessoa vê e mexe só no que é seu.
 
 -- Lançamento fixo: o app mostra no mês os que ainda não foram lançados, e a pessoa confirma.
@@ -15,6 +15,7 @@ create table public.recorrentes (
   dia smallint not null check (dia between 1 and 31),
   desde text not null check (desde ~ '^[0-9]{4}-[0-9]{2}$'),
   ativo boolean not null default true,
+  usar_media boolean not null default false, -- sugerir a média dos últimos 3 meses (ex.: salário com hora extra)
   criado_em timestamptz not null default now(),
   constraint recorrentes_cartao check (pagamento is null or (tipo = 'saida' and meio = 'dinheiro'))
 );
@@ -61,4 +62,25 @@ create policy "criar os proprios limites" on public.limites for insert to authen
 create policy "alterar os proprios limites" on public.limites for update to authenticated
   using (dono = (select auth.uid())) with check (dono = (select auth.uid()));
 create policy "apagar os proprios limites" on public.limites for delete to authenticated
+  using (dono = (select auth.uid()));
+
+-- Saldo inicial: quanto a pessoa tinha em conta no mês em que começou a usar o app.
+-- O saldo acumulado = saldo inicial + sobras (entradas - saídas em dinheiro) desde esse mês.
+create table public.saldos_iniciais (
+  dono uuid primary key default auth.uid() references public.perfis (id) on delete cascade,
+  mes text not null check (mes ~ '^[0-9]{4}-[0-9]{2}$'),
+  valor_centavos bigint not null
+);
+
+alter table public.saldos_iniciais enable row level security;
+revoke all on public.saldos_iniciais from anon, authenticated;
+grant select, insert, update, delete on public.saldos_iniciais to authenticated;
+
+create policy "ver o proprio saldo inicial" on public.saldos_iniciais for select to authenticated
+  using (dono = (select auth.uid()));
+create policy "criar o proprio saldo inicial" on public.saldos_iniciais for insert to authenticated
+  with check (dono = (select auth.uid()) and public.eh_membro());
+create policy "alterar o proprio saldo inicial" on public.saldos_iniciais for update to authenticated
+  using (dono = (select auth.uid())) with check (dono = (select auth.uid()));
+create policy "apagar o proprio saldo inicial" on public.saldos_iniciais for delete to authenticated
   using (dono = (select auth.uid()));

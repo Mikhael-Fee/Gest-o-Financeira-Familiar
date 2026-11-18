@@ -213,10 +213,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .seta-item { color: var(--muted); font-size: 20px; margin-left: 4px; }
 
 /* Etapa 7: limites (estado sempre com ícone e texto, nunca só cor) */
-.selo { flex: none; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font: 800 14px var(--body); }
-.selo.perto { background: var(--benefit-soft); color: var(--benefit); }
-.selo.passou { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
-.selo.ok { background: var(--accent-soft); color: var(--accent); }
+.estado-icone { flex: none; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font: 800 14px var(--body); }
+.estado-icone.perto { background: var(--benefit-soft); color: var(--benefit); }
+.estado-icone.passou { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+.estado-icone.ok { background: var(--accent-soft); color: var(--accent); }
 .limite-barra { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
 .limite-barra span { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; background: var(--accent); min-width: 4px; }
 .limite-barra.perto span { background: var(--benefit); }
@@ -225,4 +225,32 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .linha-campo { flex-direction: row !important; align-items: center; justify-content: space-between; gap: 12px; }
 .linha-campo input { max-width: 140px; text-align: right; }
 .com-selo { display: inline-flex; align-items: center; gap: 8px; }
-.com-selo .selo { width: 22px; height: 22px; font-size: 12px; border-radius: 7px; }
+.com-selo .estado-icone { width: 22px; height: 22px; font-size: 12px; border-radius: 7px; }
+
+/* Cores por categoria e por banco (paleta validada para daltonismo; mesma ordem no claro e no escuro). */
+:root {
+  --c-azul: #2a78d6; --c-laranja: #eb6834; --c-agua: #1baf7a; --c-amarelo: #eda100;
+  --c-magenta: #e87ba4; --c-verde: #008300; --c-violeta: #6250d6; --c-vermelho: #e34948; --c-cinza: #8a9794;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-azul: #3987e5; --c-laranja: #d95926; --c-agua: #199e70; --c-amarelo: #c98500;
+    --c-magenta: #d55181; --c-verde: #0ca30c; --c-violeta: #9085e9; --c-vermelho: #e66767; --c-cinza: #6f7d7a;
+  }
+}
+.icone.com-cor { background: color-mix(in srgb, var(--cor) 24%, var(--surface)); color: var(--fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cor) 45%, transparent); }
+.ponto-cor { flex: none; width: 10px; height: 10px; border-radius: 3px; background: var(--cor); display: inline-block; }
+.pilar.empilhado { display: flex; flex-direction: column-reverse; gap: 2px; background: none; opacity: 1; }
+.pilar.empilhado > span { display: block; min-height: 2px; flex-basis: 0; }
+.pilar.empilhado > span:last-child { border-radius: 4px 4px 0 0; }
+.legenda-cores { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.legenda-cores li { display: inline-flex; align-items: center; gap: 6px; }
+.icone.mini { width: 24px; height: 24px; font-size: 10px; border-radius: 7px; }
+.voltar-linha { align-items: center; justify-content: space-between; }
+.cartao-topo > div { flex: 1; min-width: 0; }
+.seta.troca { flex: none; width: 36px; height: 36px; border-radius: 12px; border: 0; background: var(--surface); color: var(--fg); font-size: 22px; cursor: pointer; }
+.acumulado { margin-top: 4px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent); display: flex; flex-direction: column; gap: 4px; }
+.acumulado > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.acumulado b { font-size: 20px; }
+.form-inline { display: flex; flex-direction: column; gap: 10px; }
+.colunas[style] .pilar:not(.negativo):not(.empilhado) { background: var(--cor); }

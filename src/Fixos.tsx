@@ -12,7 +12,7 @@ export const FIXO_NOVO: NovoRecorrente = { descricao: "", categoria: "Outros", v
 export function descreverFixo(f: Recorrente, cartoes: Cartao[]) {
   const c = cartoes.find((x) => x.id === f.cartaoId);
   const como = f.pagamento ? `${c ? c.banco : "cartão"} ${f.pagamento === "credito" ? "crédito" : "débito"}` : f.meio === "beneficio" ? "VR/VA" : f.tipo === "entrada" ? "entrada" : "dinheiro/Pix";
-  return `todo dia ${f.dia} · ${como}`;
+  return `todo dia ${f.dia} · ${como}${f.usarMedia ? " · pela média" : ""}`;
 }
 
 /** Cadastrar ou mudar um lançamento fixo. */
@@ -30,6 +30,7 @@ export function FormFixo({ inicial, cartoes, fechar, salvar, parar }: {
   const [valor, setValor] = useState(inicial.valor ? (inicial.valor / 100).toFixed(2).replace(".", ",") : "");
   const [categoria, setCategoria] = useState(inicial.categoria);
   const [dia, setDia] = useState(String(inicial.dia));
+  const [usarMedia, setUsarMedia] = useState(inicial.usarMedia ?? false);
   const categorias = CATEGORIAS[tipo];
   const comCartao = tipo === "saida" && (como === "debito" || como === "credito");
   const opcoes = cartoes.filter((c) => (como === "credito" ? c.temCredito : c.temDebito));
@@ -43,7 +44,7 @@ export function FormFixo({ inicial, cartoes, fechar, salvar, parar }: {
     if (!(d >= 1 && d <= 31)) return "O dia vai de 1 a 31.";
     if (comCartao && !cartaoEscolhido) return "Cadastre um cartão primeiro.";
     await salvar({
-      ...inicial, tipo, descricao: descricao.trim(), valor: centavos, dia: d,
+      ...inicial, tipo, descricao: descricao.trim(), valor: centavos, dia: d, usarMedia,
       categoria: categorias.includes(categoria) ? categoria : categorias[0],
       meio: como === "beneficio" ? "beneficio" : "dinheiro",
       pagamento: comCartao ? (como as "debito" | "credito") : null,
@@ -84,6 +85,11 @@ export function FormFixo({ inicial, cartoes, fechar, salvar, parar }: {
           {categorias.map((c) => <option key={c}>{c}</option>)}
         </select>
       </label>
+      <label className="campo marcar" htmlFor="x-media">
+        <input id="x-media" type="checkbox" checked={usarMedia} onChange={(e) => setUsarMedia(e.target.checked)} />
+        O valor varia: sugerir a média dos últimos 3 meses
+      </label>
+      {usarMedia && <p className="nota">Bom para salário com hora extra. Enquanto não houver meses lançados, usa o valor acima.</p>}
       <p className="nota">Todo mês ele aparece em Minhas para você lançar com um toque. Se o valor mudar, dá para ajustar antes.</p>
     </Folha>
   );
