@@ -25,8 +25,8 @@ export type Lancamento = {
 export type Pagamento = "debito" | "credito";
 
 export const CATEGORIAS: Record<Tipo, string[]> = {
-  entrada: ["Salário", "Freela", "Benefício", "Extra", "Reembolso", "Outros"],
-  saida: ["Alimentação", "Casa", "Transporte", "Cartão", "Saúde", "Lazer", "Educação", "Compras", "Outros"],
+  entrada: ["Salário", "Freela", "Benefício", "Extra", "Reembolso", "Empréstimo", "Outros"],
+  saida: ["Alimentação", "Casa", "Transporte", "Cartão", "Saúde", "Lazer", "Educação", "Compras", "Empréstimo", "Igreja", "Outros"],
 };
 
 /** "2026-11" a partir de uma data AAAA-MM-DD. */
