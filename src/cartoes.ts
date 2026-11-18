@@ -16,6 +16,8 @@ export type Cartao = {
 export const BANCOS = ["Bradesco", "Nubank", "Caixa", "Itaú", "Inter", "Mercado Pago", "Banco do Brasil", "Santander", "C6", "PicPay"];
 
 export const nomeCartao = (c: Pick<Cartao, "banco" | "apelido">) => (c.apelido ? `${c.banco} · ${c.apelido}` : c.banco);
+/** Cartão emprestado, para quem usa: "Itaú - Nome do dono". O apelido é do dono e fica de fora. */
+export const nomeEmprestado = (c: Pick<Cartao, "banco">, nomeDono: string) => `${c.banco} - ${nomeDono}`;
 
 const diasNoMes = (ano: number, mes1a12: number) => new Date(Date.UTC(ano, mes1a12, 0)).getUTCDate();
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Repositorio } from "./repositorio";
 import { ROTULO_PAPEL, type Perfil } from "./tipos";
-import { nomeCartao, type Cartao } from "./cartoes";
+import { nomeCartao, nomeEmprestado, type Cartao } from "./cartoes";
 import { CARTAO_NOVO, FormCartao } from "./Minhas";
 import { BotaoInstalar } from "./Instalar";
 
@@ -58,12 +58,12 @@ export function Ajustes({ repo, perfil, familia, sair }: { repo: Repositorio; pe
 
       {queUso.length > 0 && (
         <section className="painel">
-          <h2>Cartões que uso</h2>
+          <h2>Cartões emprestados para você</h2>
           <ul className="lista">
             {queUso.map((c) => (
               <li key={c.id}>
                 <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
-                <span className="texto"><b>{nomeCartao(c)}</b><span>De {nomeDe(c.dono)} · fecha {c.diaFechamento}, vence {c.diaVencimento}</span></span>
+                <span className="texto"><b>{nomeEmprestado(c, nomeDe(c.dono))}</b><span>Emprestado · fecha {c.diaFechamento}, vence {c.diaVencimento}</span></span>
               </li>
             ))}
           </ul>

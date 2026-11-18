@@ -5,7 +5,7 @@ import type { Repositorio, NovoLancamento } from "./repositorio";
 import type { RepositorioCasa } from "./repositorioCasa";
 import type { Forma } from "./casa";
 import { podeGerenciarCasa, type Perfil } from "./tipos";
-import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, vencimentoDaCompra, type Cartao } from "./cartoes";
+import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, nomeEmprestado, vencimentoDaCompra, type Cartao } from "./cartoes";
 import { Folha, Segmento } from "./Folha";
 
 type ParaCasa = Forma | "nao";
@@ -159,7 +159,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
                         const c = queUso.find((x) => x.id === l.cartaoId);
                         const texto = (
                           <>
-                            <span className="texto"><b>{l.descricao}</b><span>{c ? `${c.banco} · ` : ""}fatura {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}{l.pagamentoInformadoEm ? ` · pago em ${dataCurta(l.pagamentoInformadoEm)}` : ""}</span></span>
+                            <span className="texto"><b>{l.descricao}</b><span>{c ? `${nomeEmprestado(c, nomeDe(c.dono))} · ` : ""}fatura {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}{l.pagamentoInformadoEm ? ` · pago em ${dataCurta(l.pagamentoInformadoEm)}` : ""}</span></span>
                             <span className="valor">{reais(l.valor)}</span>
                           </>
                         );
@@ -187,8 +187,8 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
                 <li key={c.id}>
                   <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
                   <span className="texto">
-                    <b>{nomeCartao(c)}</b>
-                    <span>{meu ? (f ? `vence ${dataCurta(f.data)}` : `vence dia ${c.diaVencimento}`) : `de ${nomeDe(c.dono)}${aPagar ? ` · você deve ${reais(aPagar)}` : ""}`}</span>
+                    <b>{meu ? nomeCartao(c) : nomeEmprestado(c, nomeDe(c.dono))}</b>
+                    <span>{meu ? (f ? `vence ${dataCurta(f.data)}` : `vence dia ${c.diaVencimento}`) : `emprestado${aPagar ? ` · você deve ${reais(aPagar)}` : ""}`}</span>
                   </span>
                   {meu ? <b className="valor">{reais(f?.total ?? 0)}</b> : <button className="btn pequeno" onClick={() => novo(c)}>+ Compra</button>}
                 </li>
@@ -412,7 +412,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
 
   return (
     <Folha
-      titulo={compraNoCartaoDeOutro && !editando ? `Compra no cartão de ${nomeDe(inicial.dono)}` : editando ? (ehParcelaExistente ? `Parcela ${inicial.parcela}/${inicial.parcelas}` : "Editar lançamento") : "Novo lançamento"}
+      titulo={compraNoCartaoDeOutro && !editando ? `Compra no ${cartao ? nomeEmprestado(cartao, nomeDe(inicial.dono)) : "cartão"}` : editando ? (ehParcelaExistente ? `Parcela ${inicial.parcela}/${inicial.parcelas}` : "Editar lançamento") : "Novo lançamento"}
       fechar={fechar}
       salvar={enviar}
       apagar={apagar}
@@ -426,7 +426,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
           <label className="campo" htmlFor="f-cartao">
             Cartão
             <select id="f-cartao" value={cartaoId} onChange={(e) => setCartaoId(e.target.value)}>
-              {opcoesCartao.map((c) => <option key={c.id} value={c.id}>{nomeCartao(c)}{c.dono ? ` (de ${nomeDe(c.dono)})` : ""}</option>)}
+              {opcoesCartao.map((c) => <option key={c.id} value={c.id}>{c.dono ? nomeEmprestado(c, nomeDe(c.dono)) : nomeCartao(c)}</option>)}
             </select>
           </label>
         ) : (
@@ -435,7 +435,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
       )}
 
       {donoCartao && (
-        <div className="previa"><p>Cartão de <b>{nomeDe(donoCartao)}</b>, sempre no crédito. A compra entra na fatura e aparece para vocês dois. Fica em “Você deve” até {nomeDe(donoCartao)} marcar que recebeu.</p></div>
+        <div className="previa"><p>Cartão <b>{cartao ? nomeEmprestado(cartao, nomeDe(donoCartao)) : ""}</b>, emprestado, sempre no crédito. A compra entra na fatura e aparece para vocês dois. Fica em “Você deve” até {nomeDe(donoCartao)} marcar que recebeu.</p></div>
       )}
 
       {comCartao && opcoesCartao.length > 0 && !inicial.reembolsoId && !donoCartao && (
