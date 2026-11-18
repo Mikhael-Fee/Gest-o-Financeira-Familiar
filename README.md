@@ -1,29 +1,44 @@
-# Finanças Familiares — projeto PWA
+# Entre Nós · Finanças da Família
 
-Aplicativo de finanças individuais e da Casa, planejado para uma família de quatro pessoas, com cartões compartilhados, empréstimos, parcelas, benefícios VA/VR, previsões e contribuições flexíveis.
+App para celular (instalável como aplicativo) em que cada pessoa da família cuida das próprias finanças e todos acompanham as contas da **Casa**.
 
-## Estado do repositório
+## Como o projeto está sendo feito
 
-**Ambiente preparado para o Codex; a aplicação ainda não foi implementada.** Este repositório está público. Nenhuma conta real, dado bancário, senha ou chave deve ser armazenado aqui.
+Em **etapas pequenas**, uma por vez, cada uma testada no celular antes da próxima. O plano está em [docs/ETAPAS.md](docs/ETAPAS.md).
 
-## Começar no Codex
+A primeira tentativa (branch `feat/aplicativo-financas-familiares`) tentou fazer tudo de uma vez e ficou complexa demais para o dia a dia. Ela continua guardada como referência, assim como a especificação original em `docs/ESPECIFICACAO_CODEX.md`, que agora serve como lista de ideias para etapas futuras.
 
-1. Abra este repositório em uma tarefa do Codex.
-2. O Codex lê as orientações do [AGENTS.md](./AGENTS.md), segundo a documentação oficial.
-3. A especificação integral está em [docs/ESPECIFICACAO_CODEX.md](./docs/ESPECIFICACAO_CODEX.md).
-4. Confira [docs/COMECE_AQUI.md](./docs/COMECE_AQUI.md) e [docs/SEGURANCA.md](./docs/SEGURANCA.md).
-5. Peça: **"Implemente a aplicação descrita no repositório, respeitando o AGENTS.md e a especificação integral. Desenvolva, teste, documente; não publique em produção sem aprovação."**
+## Rodar no computador
 
-## Escopo essencial
+```bash
+npm install
+npm run dev        # abre em http://localhost:5173
+npm test           # testes
+npm run build      # versão para publicar (pasta dist)
+```
 
-- Finanças pessoais privadas e orçamento Casa compartilhado.
-- Salários previstos, reais e entradas extras; contas recorrentes variáveis.
-- Cartões por banco, fechamento/vencimento e faturas, titular e usuário autorizado distintos.
-- Transferência/reembolso entre familiares e confirmação separada do pagamento da fatura.
-- Empréstimos existentes: número total, valor das parcelas, primeira data, última parcela paga, data efetiva, status desconhecido e atrasos.
-- Compras parceladas com ou sem juros; dívida vencida não desaparece ao trocar de mês.
-- VA e VR com saldos, recargas e compras que contam ou não como contribuição flexível à Casa.
-- PWA dark-first, acessível, simples para celular e familiares pouco habituados a sistemas.
-- Supabase com RLS, autenticação por nome de usuário mediada por serviço seguro, backups, testes automatizados.
+Sem as variáveis do Supabase o app abre só no **modo demonstração**, com dados de exemplo.
 
-A stack (React/TypeScript, Supabase/PostgreSQL e PWA) é uma preferência definida na especificação e pode ser refinada pelo Codex com justificativa.
+## Ligar ao Supabase
+
+1. Copie `.env.example` para `.env.local` e preencha a URL e a chave **publicável** (anon) do projeto.
+2. Rode as migrations da pasta `supabase/migrations` (SQL Editor do Supabase ou `supabase db push`).
+3. Em *Authentication → Providers → Email*, deixe **desligado** o cadastro aberto ("Allow new users to sign up") e a confirmação por e-mail.
+4. Crie cada pessoa em *Authentication → Users → Add user* com o e-mail `usuario@entrenos.local` (o app transforma o usuário digitado nesse e-mail) e uma senha.
+5. Crie o perfil de cada um no SQL Editor:
+
+```sql
+insert into public.perfis (id, nome, papel)
+select id, 'Nome que aparece no app', 'responsavel'  -- ou 'filho'
+from auth.users where email = 'usuario@entrenos.local';
+```
+
+Quem não tem perfil não consegue entrar.
+
+## Publicar no Netlify
+
+O `netlify.toml` já tem o comando de build e a pasta `dist`. No Netlify, defina `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas variáveis de ambiente do site.
+
+## Segurança
+
+Repositório público: nada de nomes reais, valores reais, senhas ou chaves no Git. Veja [docs/SEGURANCA.md](docs/SEGURANCA.md).
