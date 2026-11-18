@@ -4,8 +4,8 @@ Cada etapa é uma branch e um pull request. A família testa no celular antes de
 
 | Etapa | O que entrega | Situação |
 |---|---|---|
-| 1. Base | App instalável, login por usuário e senha, perfis da família (quem cuida da Casa e quem ajuda), telas vazias das três abas | Em revisão |
-| 2. Minhas finanças | Lançar entradas e saídas, separar dinheiro de VR/VA, resumo do mês. Só a própria pessoa vê | A fazer |
+| 1. Base | App instalável, login por usuário e senha, perfis da família (quem cuida da Casa e quem ajuda), telas vazias das três abas | PR #2 |
+| 2. Minhas finanças | Lançar entradas e saídas, separar dinheiro de VR/VA, resumo do mês. Só a própria pessoa vê | Em revisão |
 | 3. Casa | Despesas (só responsáveis lançam e marcam pago), ajuda de cada filho: valor fixo em dinheiro + benefício (VR/VA), filho marca "enviei" e responsável confirma, saldos separados de dinheiro e benefício | A fazer |
 | 4. Privacidade | Cada pessoa escolhe mostrar nada, só a situação do mês, ou também o histórico | A fazer |
 | Depois | Cartões, parcelas, empréstimos, previsões (ideias da especificação original), uma de cada vez | — |

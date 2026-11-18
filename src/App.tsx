@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase, dominioLogin } from "./supabase";
 import { usuarioParaEmail } from "./usuario";
-import { PERFIS_DEMO } from "./demo";
+import { PERFIS_DEMO, lancamentosDemo } from "./demo";
+import { Minhas } from "./Minhas";
+import { repositorioDemo, repositorioSupabase } from "./repositorio";
 import { ROTULO_PAPEL, podeGerenciarCasa, type Perfil } from "./tipos";
 import { BotaoInstalar } from "./Instalar";
 
@@ -119,6 +121,10 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
   const [aba, setAba] = useState<Aba>("minhas");
   const [familia, setFamilia] = useState<Perfil[]>(sessao.demo ? PERFIS_DEMO : []);
   const { perfil } = sessao;
+  const repo = useMemo(
+    () => (sessao.demo ? repositorioDemo(lancamentosDemo(perfil.id)) : repositorioSupabase),
+    [sessao.demo, perfil.id],
+  );
 
   useEffect(() => {
     if (sessao.demo || !supabase) return;
@@ -155,16 +161,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
       </header>
 
       <main className="conteudo wrap">
-        {aba === "minhas" && (
-          <>
-            <section className="destaque">
-              <span className="rotulo">Minhas finanças</span>
-              <p className="grande">Só você vê esta parte.</p>
-              <p>Aqui você vai lançar o que entra e o que sai, e ver quanto sobrou no mês.</p>
-            </section>
-            <EmBreve etapa={2} texto="Lançar entradas e saídas, separar dinheiro de VR/VA e ver o resumo do mês." />
-          </>
-        )}
+        {aba === "minhas" && <Minhas key={perfil.id} repo={repo} nome={perfil.nome} />}
 
         {aba === "casa" && (
           <>
