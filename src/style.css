@@ -254,3 +254,12 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .acumulado b { font-size: 20px; }
 .form-inline { display: flex; flex-direction: column; gap: 10px; }
 .colunas[style] .pilar:not(.negativo):not(.empilhado) { background: var(--cor); }
+
+/* Busca */
+.busca-campo input { font-size: 17px; padding-left: 40px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%238a9794' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px center; }
+.grupo-mes { display: flex; flex-direction: column; gap: 4px; }
+.grupo-mes + .grupo-mes { margin-top: 10px; }
+.cabeca-mes { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.cabeca-botoes { display: flex; gap: 8px; }
+.ok-texto { color: var(--accent); font-weight: 700; margin: 0; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
