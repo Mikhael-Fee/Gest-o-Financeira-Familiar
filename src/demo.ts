@@ -2,6 +2,7 @@ import type { Perfil } from "./tipos";
 import type { Lancamento } from "./lancamentos";
 import { hojeISO, mesDe } from "./lancamentos";
 import type { DadosCasa } from "./casa";
+import type { Cartao } from "./cartoes";
 
 // Pessoas fictícias para a demonstração. O repositório é público:
 // nomes reais ficam só no banco de dados.
@@ -22,7 +23,7 @@ const EXEMPLOS: Record<string, Exemplo[]> = {
     [5, "VA do mês", "Benefício", 400, "entrada", "beneficio"],
     [6, "Ajuda fixa para a Casa", "Casa", 500, "saida", "dinheiro"],
     [6, "VR enviado para a Casa", "Casa", 700, "saida", "beneficio"],
-    [8, "Fatura do cartão", "Cartão", 860, "saida", "dinheiro"],
+    [10, "Notebook", "Compras", 860, "saida", "dinheiro"], // parcela 7/10 no crédito (veja abaixo)
     [9, "Almoço no trabalho", "Alimentação", 38, "saida", "beneficio"],
     [12, "Academia", "Saúde", 99, "saida", "dinheiro"],
     [15, "Uber", "Transporte", 74.5, "saida", "dinheiro"],
@@ -58,6 +59,9 @@ export function lancamentosDemo(perfilId: string, hoje = new Date()): Lancamento
       valor: Math.round(valor * 100),
       tipo,
       meio,
+      ...(perfilId === "demo-filho" && descricao === "Notebook"
+        ? { pagamento: "credito" as const, cartaoId: "demo-nubank", compraId: "demo-compra-notebook", parcela: 7, parcelas: 10, dataCompra: null }
+        : {}),
     }));
 }
 
@@ -90,4 +94,13 @@ export function casaDemo(hoje = new Date()): DadosCasa {
       { id: "d7", data: dia(9), descricao: "Feira e padaria", valor: c(410), meio: "beneficio", status: "paga", pagaPor: null },
     ],
   };
+}
+
+/** Cartões de exemplo (só o Filho tem, para mostrar a fatura). */
+export function cartoesDemo(perfilId: string): Cartao[] {
+  if (perfilId !== "demo-filho") return [];
+  return [
+    { id: "demo-nubank", banco: "Nubank", apelido: null, temCredito: true, temDebito: false, diaFechamento: 3, diaVencimento: 10 },
+    { id: "demo-inter", banco: "Inter", apelido: null, temCredito: true, temDebito: true, diaFechamento: 28, diaVencimento: 5 },
+  ];
 }

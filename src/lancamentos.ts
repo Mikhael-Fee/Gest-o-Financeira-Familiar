@@ -9,7 +9,15 @@ export type Lancamento = {
   valor: number; // centavos, sempre positivo
   tipo: Tipo;
   meio: Meio;
+  pagamento?: Pagamento | null; // só para saída em dinheiro paga com cartão
+  cartaoId?: string | null;
+  compraId?: string | null; // agrupa as parcelas de uma mesma compra
+  parcela?: number | null;
+  parcelas?: number | null;
+  dataCompra?: string | null;
 };
+
+export type Pagamento = "debito" | "credito";
 
 export const CATEGORIAS: Record<Tipo, string[]> = {
   entrada: ["Salário", "Freela", "Benefício", "Extra", "Outros"],
@@ -36,6 +44,7 @@ export const hojeISO = (agora = new Date()) =>
   `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(agora.getDate()).padStart(2, "0")}`;
 
 export type Resumo = {
+  noCredito: number; // parte do "saiu" que vem de faturas de cartão
   entrou: number;
   saiu: number;
   sobra: number;
@@ -46,9 +55,10 @@ export type Resumo = {
 
 /** Resumo de um mês. Dinheiro e benefício (VR/VA) nunca se misturam. */
 export function resumir(lista: Lancamento[], mes: string): Resumo {
-  const r = { entrou: 0, saiu: 0, beneficioRecebido: 0, beneficioGasto: 0 };
+  const r = { entrou: 0, saiu: 0, beneficioRecebido: 0, beneficioGasto: 0, noCredito: 0 };
   for (const l of lista) {
     if (mesDe(l.data) !== mes) continue;
+    if (l.pagamento === "credito") r.noCredito += l.valor;
     if (l.meio === "dinheiro") l.tipo === "entrada" ? (r.entrou += l.valor) : (r.saiu += l.valor);
     else l.tipo === "entrada" ? (r.beneficioRecebido += l.valor) : (r.beneficioGasto += l.valor);
   }

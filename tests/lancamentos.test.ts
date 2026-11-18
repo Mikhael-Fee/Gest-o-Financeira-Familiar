@@ -43,7 +43,7 @@ describe("resumir", () => {
   ];
   it("separa dinheiro de VR/VA e ignora outros meses", () => {
     expect(resumir(lista, "2026-11")).toEqual({
-      entrou: 320000, saiu: 50000, sobra: 270000,
+      entrou: 320000, saiu: 50000, sobra: 270000, noCredito: 0,
       beneficioRecebido: 70000, beneficioGasto: 73800, beneficioSobra: -3800,
     });
   });
