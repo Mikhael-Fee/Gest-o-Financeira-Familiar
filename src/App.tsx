@@ -182,7 +182,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
 
         {aba === "familia" && familia.length > 0 && <Familia key={perfil.id} repo={repoPrivacidade} eu={perfil} familia={familia} />}
 
-        {aba === "ajustes" && <Ajustes key={perfil.id} repo={repo} perfil={perfil} familia={familia} sair={sair} />}
+        {aba === "ajustes" && <Ajustes key={perfil.id} repo={repo} perfil={perfil} familia={familia} sair={sair} demo={sessao.demo} />}
       </main>
 
       <nav className="abas" aria-label="Seções">

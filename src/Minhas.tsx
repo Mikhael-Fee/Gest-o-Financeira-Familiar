@@ -8,6 +8,7 @@ import { podeGerenciarCasa, type Perfil } from "./tipos";
 import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, nomeEmprestado, vencimentoDaCompra, type Cartao } from "./cartoes";
 import { Folha, Segmento } from "./Folha";
 import { CartaoDetalhe } from "./CartaoDetalhe";
+import { Busca } from "./Busca";
 import { lancamentoDoFixo, pendentesDoMes, saldoAcumulado, situacaoLimites, valorSugerido, type HistoricoFixos, type Limites, type Recorrente } from "./fixos";
 import { gastosPorCategoria } from "./resumo";
 import { comCor, corBanco, corCategoria } from "./cores";
@@ -31,6 +32,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const [novoCartao, setNovoCartao] = useState(false);
   const [vendoCartao, setVendoCartao] = useState<Cartao | null>(null);
   const [mesCartao, setMesCartao] = useState<string | null>(null);
+  const [buscando, setBuscando] = useState(false);
   const [todosCartoes, setTodosCartoes] = useState(false);
   const [fixos, setFixos] = useState<Recorrente[]>([]);
   const [lancados, setLancados] = useState<string[]>([]);
@@ -126,7 +128,9 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
 
   return (
     <>
-      {vendoCartao ? (
+      {buscando ? (
+        <Busca repo={repo} cartoes={cartoes} versao={versao} voltar={() => setBuscando(false)} abrir={setEditando} />
+      ) : vendoCartao ? (
         <CartaoDetalhe key={`${vendoCartao.id}-${versao}`} repo={repo} cartao={vendoCartao} cartoes={cartoes} trocar={(c, m) => { setMesCartao(m); setVendoCartao(c); }}
           mesInicial={mesCartao ?? mes} nomeDe={nomeDe} voltar={() => { setVendoCartao(null); setMesCartao(null); }} abrir={setEditando} />
       ) : (
@@ -317,7 +321,10 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
       <section className="painel">
         <div className="cabeca">
           <h2>Lançamentos</h2>
-          <button className="btn pequeno" onClick={() => novo()}>+ Lançar</button>
+          <div className="cabeca-botoes">
+            <button className="btn pequeno fantasma" onClick={() => setBuscando(true)} aria-label="Buscar lançamentos">Buscar</button>
+            <button className="btn pequeno" onClick={() => novo()}>+ Lançar</button>
+          </div>
         </div>
         {erro && <p className="erro" role="alert">{erro}</p>}
         {lista === null && <p className="nota">Carregando…</p>}

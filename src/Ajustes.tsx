@@ -8,12 +8,13 @@ import { lerValor, reais } from "./dinheiro";
 import { hojeISO, mesDe, nomeMes } from "./lancamentos";
 import type { NovoRecorrente, Recorrente } from "./fixos";
 import { FIXO_NOVO, FormFixo, descreverFixo } from "./Fixos";
+import { TrocarSenha } from "./Senha";
 import { comCor, corBanco, corCategoria } from "./cores";
 
 type CartaoEditavel = Omit<Cartao, "id"> & { id?: string };
 
 /** Tudo o que se mexe pouco: cartões, conta, instalar e sair. Fica fora da tela do dia a dia. */
-export function Ajustes({ repo, perfil, familia, sair }: { repo: Repositorio; perfil: Perfil; familia: Perfil[]; sair: () => void }) {
+export function Ajustes({ repo, perfil, familia, sair, demo }: { repo: Repositorio; perfil: Perfil; familia: Perfil[]; sair: () => void; demo: boolean }) {
   const [cartoes, setCartoes] = useState<Cartao[] | null>(null);
   const [queUso, setQueUso] = useState<Cartao[]>([]);
   const [editando, setEditando] = useState<CartaoEditavel | null>(null);
@@ -25,6 +26,8 @@ export function Ajustes({ repo, perfil, familia, sair }: { repo: Repositorio; pe
   const [saldoValor, setSaldoValor] = useState("");
   const [saldoMes, setSaldoMes] = useState(mesDe(hojeISO()));
   const [saldoErro, setSaldoErro] = useState("");
+  const [trocandoSenha, setTrocandoSenha] = useState(false);
+  const [senhaOk, setSenhaOk] = useState(false);
   const nomeDe = (id?: string | null) => familia.find((p) => p.id === id)?.nome ?? "Alguém";
 
   const carregar = useCallback(async () => {
@@ -159,11 +162,17 @@ export function Ajustes({ repo, perfil, familia, sair }: { repo: Repositorio; pe
           <dt>Nome</dt><dd>{perfil.nome}</dd>
           <dt>Papel</dt><dd>{ROTULO_PAPEL[perfil.papel]}</dd>
         </dl>
-        <button className="btn fantasma" onClick={sair}>Sair da conta</button>
+        {senhaOk && <p className="ok-texto" role="status">✓ Senha trocada.</p>}
+        <div className="duas">
+          <button className="btn fantasma" disabled={demo} title={demo ? "Não disponível na demonstração" : undefined} onClick={() => { setSenhaOk(false); setTrocandoSenha(true); }}>Trocar senha</button>
+          <button className="btn fantasma" onClick={sair}>Sair da conta</button>
+        </div>
+        {demo && <p className="nota">Na demonstração não dá para trocar a senha.</p>}
       </section>
 
       <BotaoInstalar />
 
+      {trocandoSenha && <TrocarSenha fechar={() => setTrocandoSenha(false)} pronto={() => { setTrocandoSenha(false); setSenhaOk(true); }} />}
       {fixoEditando && (
         <FormFixo inicial={fixoEditando} cartoes={cartoes ?? []} fechar={() => setFixoEditando(null)}
           salvar={async (r) => { await repo.salvarRecorrente(r); setFixoEditando(null); await carregar(); }}
