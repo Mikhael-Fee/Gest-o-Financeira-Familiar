@@ -1,6 +1,7 @@
 import type { Perfil } from "./tipos";
 import type { Lancamento } from "./lancamentos";
 import { hojeISO, mesDe } from "./lancamentos";
+import type { DadosCasa } from "./casa";
 
 // Pessoas fictícias para a demonstração. O repositório é público:
 // nomes reais ficam só no banco de dados.
@@ -58,4 +59,35 @@ export function lancamentosDemo(perfilId: string, hoje = new Date()): Lancamento
       tipo,
       meio,
     }));
+}
+
+
+/** Casa de exemplo no mês atual. */
+export function casaDemo(hoje = new Date()): DadosCasa {
+  const mes = mesDe(hojeISO(hoje));
+  const dia = (n: number) => `${mes}-${String(n).padStart(2, "0")}`;
+  const c = (r: number) => Math.round(r * 100);
+  return {
+    combinados: [
+      { filho: "demo-filho", dinheiro: c(500), beneficioNome: "VR", beneficio: c(700) },
+      { filho: "demo-filha", dinheiro: null, beneficioNome: "VA", beneficio: c(600) },
+    ],
+    ajudas: [
+      { id: "a1", data: dia(6), quem: "demo-filho", descricao: "Ajuda fixa", valor: c(500), meio: "dinheiro", forma: "enviado", status: "confirmado", despesaId: null },
+      { id: "a2", data: dia(2), quem: "demo-filho", descricao: "Mercado do mês", valor: c(700), meio: "beneficio", forma: "pago_direto", status: "informado", despesaId: "d6" },
+      { id: "a3", data: dia(6), quem: "demo-filha", descricao: "VA do mês", valor: c(600), meio: "beneficio", forma: "enviado", status: "confirmado", despesaId: null },
+      { id: "a4", data: dia(15), quem: "demo-filha", descricao: "Ajuda do freela", valor: c(350), meio: "dinheiro", forma: "enviado", status: "informado", despesaId: null },
+      { id: "a5", data: dia(1), quem: "demo-mae", descricao: "VA da Mãe", valor: c(800), meio: "beneficio", forma: "enviado", status: "confirmado", despesaId: null },
+      { id: "a6", data: dia(1), quem: "demo-pai", descricao: "Aposentadoria (parte da Casa)", valor: c(1500), meio: "dinheiro", forma: "enviado", status: "confirmado", despesaId: null },
+    ],
+    despesas: [
+      { id: "d1", data: dia(5), descricao: "Aluguel", valor: c(1400), meio: "dinheiro", status: "paga", pagaPor: null },
+      { id: "d2", data: dia(12), descricao: "Luz", valor: c(238.4), meio: "dinheiro", status: "paga", pagaPor: null },
+      { id: "d3", data: dia(15), descricao: "Água", valor: c(96.2), meio: "dinheiro", status: "paga", pagaPor: null },
+      { id: "d4", data: dia(20), descricao: "Internet", valor: c(119.9), meio: "dinheiro", status: "a_pagar", pagaPor: null },
+      { id: "d5", data: dia(22), descricao: "Gás", valor: c(125), meio: "dinheiro", status: "a_pagar", pagaPor: null },
+      { id: "d6", data: dia(2), descricao: "Mercado do mês", valor: c(700), meio: "beneficio", status: "paga", pagaPor: "demo-filho" },
+      { id: "d7", data: dia(9), descricao: "Feira e padaria", valor: c(410), meio: "beneficio", status: "paga", pagaPor: null },
+    ],
+  };
 }

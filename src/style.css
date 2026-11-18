@@ -118,3 +118,24 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .link-perigo { border: 0; background: none; color: var(--bad); font: 700 14px var(--body); padding: 6px; cursor: pointer; }
 .confirmar { display: flex; flex-direction: column; gap: 10px; font-weight: 600; }
 .aviso { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: 14px; }
+
+/* Etapa 3: Casa */
+.link { border: 0; background: none; color: var(--accent); font: 700 13px var(--body); padding: 4px 0; cursor: pointer; }
+.filho { display: flex; flex-direction: column; gap: 6px; padding-block: 10px; border-top: 1px solid var(--line); }
+.filho:first-of-type { border-top: 0; }
+.progresso { display: grid; grid-template-columns: 64px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; }
+.progresso .mini { grid-row: span 2; }
+.progresso .quanto { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.barra { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; display: block; }
+.barra.fina { height: 6px; }
+.barra i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.barra i.beneficio { background: var(--benefit); }
+.selo.ok { background: var(--accent-soft); color: var(--accent); }
+.selo.pend { background: var(--benefit-soft); color: var(--benefit); align-self: flex-start; }
+.fim { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.lista li:has(.fim) { padding-block: 10px; }
+.lista li .item { flex: 1; min-width: 0; }
+.item:disabled { cursor: default; opacity: 1; }
+.erro.painel { padding: 14px; }
+.segmento.tres-op { grid-template-columns: repeat(3, 1fr); }
+.segmento.tres-op button { font-size: 12px; padding: 9px 6px; }
