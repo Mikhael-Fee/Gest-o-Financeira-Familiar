@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase, dominioLogin } from "./supabase";
 import { usuarioParaEmail } from "./usuario";
-import { PERFIS_DEMO, cartoesDemo, cartoesQueUsoDemo, casaDemo, devoDemo, historicoDemo, lancamentosDemo } from "./demo";
+import { PERFIS_DEMO, cartoesDemo, cartoesQueUsoDemo, casaDemo, devoDemo, fixosDemo, historicoDemo, lancamentosDemo, limitesDemo } from "./demo";
 import { Casa } from "./Casa";
 import { Familia } from "./Familia";
 import { repositorioPrivacidadeDemo, repositorioPrivacidadeSupabase } from "./privacidade";
@@ -134,7 +134,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
     [sessao.demo],
   );
   const repo = useMemo(
-    () => (sessao.demo ? repositorioDemo([...lancamentosDemo(perfil.id), ...historicoDemo(perfil.id)], cartoesDemo(perfil.id), devoDemo(perfil.id), cartoesQueUsoDemo(perfil.id)) : repositorioSupabase(perfil.id)),
+    () => (sessao.demo ? repositorioDemo([...lancamentosDemo(perfil.id), ...historicoDemo(perfil.id)], cartoesDemo(perfil.id), devoDemo(perfil.id), cartoesQueUsoDemo(perfil.id), fixosDemo(perfil.id), limitesDemo(perfil.id)) : repositorioSupabase(perfil.id)),
     [sessao.demo, perfil.id],
   );
 

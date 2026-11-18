@@ -3,6 +3,7 @@ import type { Lancamento } from "./lancamentos";
 import { hojeISO, mesDe, somarMes } from "./lancamentos";
 import type { DadosCasa } from "./casa";
 import type { Cartao } from "./cartoes";
+import type { Limites, Recorrente } from "./fixos";
 
 // Pessoas fictícias para a demonstração. O repositório é público:
 // nomes reais ficam só no banco de dados.
@@ -74,6 +75,7 @@ export function lancamentosDemo(perfilId: string, hoje = new Date()): Lancamento
       valor: Math.round(valor * 100),
       tipo,
       meio,
+      ...(perfilId === "demo-filho" && FIXOS_LANCADOS[descricao] ? { recorrenteId: FIXOS_LANCADOS[descricao], recorrenteMes: mes } : {}),
       ...(perfilId === "demo-filho" && descricao === "Notebook"
         ? { pagamento: "credito" as const, cartaoId: "demo-nubank", compraId: "demo-compra-notebook", parcela: 7, parcelas: 10, dataCompra: null }
         : {}),
@@ -106,6 +108,26 @@ export function historicoDemo(perfilId: string, hoje = new Date()): Lancamento[]
         });
   });
   return saida;
+}
+
+const FIXOS_LANCADOS: Record<string, string> = { "Salário": "demo-fixo-salario", "Academia": "demo-fixo-academia" };
+
+/** Fixos do Filho: dois já lançados no mês e dois esperando confirmação. */
+export function fixosDemo(perfilId: string, hoje = new Date()): Recorrente[] {
+  if (perfilId !== "demo-filho") return [];
+  const desde = mesDe(hojeISO(hoje));
+  const base = { meio: "dinheiro" as const, ativo: true, desde, pagamento: null, cartaoId: null };
+  return [
+    { ...base, id: "demo-fixo-salario", descricao: "Salário", categoria: "Salário", valor: 320000, tipo: "entrada", dia: 5 },
+    { ...base, id: "demo-fixo-academia", descricao: "Academia", categoria: "Saúde", valor: 9900, tipo: "saida", dia: 12 },
+    { ...base, id: "demo-fixo-streaming", descricao: "Streaming", categoria: "Lazer", valor: 5590, tipo: "saida", dia: 15, pagamento: "credito", cartaoId: "demo-nubank" },
+    { ...base, id: "demo-fixo-celular", descricao: "Plano do celular", categoria: "Outros", valor: 4990, tipo: "saida", dia: 20 },
+  ];
+}
+
+export function limitesDemo(perfilId: string): Limites {
+  if (perfilId !== "demo-filho") return {};
+  return { Compras: 100000, Saúde: 9000, Transporte: 10000, Lazer: 20000 };
 }
 
 /** O que a Mãe deve ao Filho na demonstração. */

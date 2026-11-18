@@ -18,6 +18,8 @@ export type Lancamento = {
   deQuem?: string | null; // compra feita por outra pessoa da família no seu cartão
   reembolsoId?: string | null; // preenchido quando você recebeu de volta
   pagamentoInformadoEm?: string | null; // quem comprou avisou que já pagou
+  recorrenteId?: string | null; // veio de um lançamento fixo
+  recorrenteMes?: string | null; // de qual mês do fixo (AAAA-MM)
 };
 
 export type Pagamento = "debito" | "credito";

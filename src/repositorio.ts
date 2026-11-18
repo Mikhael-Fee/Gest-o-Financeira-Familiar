@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import type { Lancamento } from "./lancamentos";
 import { somarMes } from "./lancamentos";
 import type { Cartao } from "./cartoes";
+import type { Limites, NovoRecorrente, Recorrente } from "./fixos";
 
 export type NovoLancamento = Omit<Lancamento, "id"> & { id?: string; /** Só ao lançar no cartão de outra pessoa: a compra fica na conta dela. */ dono?: string };
 
@@ -28,22 +29,37 @@ export interface Repositorio {
   devo(): Promise<(Lancamento & { dono: string })[]>;
   /** Cartões de outras pessoas que marcaram você como quem usa. */
   cartoesQueUso(): Promise<Cartao[]>;
+  /** Lançamentos fixos ativos. */
+  recorrentes(): Promise<Recorrente[]>;
+  /** Cria ou altera um fixo; devolve o id. */
+  salvarRecorrente(r: NovoRecorrente): Promise<string>;
+  /** Para de repetir (os lançamentos já feitos ficam). */
+  pararRecorrente(id: string): Promise<void>;
+  /** Ids dos fixos já lançados no mês (pelo mês do fixo, não pela data da fatura). */
+  fixosLancados(mes: string): Promise<string[]>;
+  limites(): Promise<Limites>;
+  /** valor null tira o limite da categoria. */
+  salvarLimite(categoria: string, valor: number | null): Promise<void>;
 }
 
-const COLUNAS = "id, data, descricao, categoria, valor_centavos, tipo, meio, pagamento, cartao_id, compra_id, parcela, parcelas, data_compra, de_quem, reembolso_id, pagamento_informado_em";
+const COLUNAS = "id, data, descricao, categoria, valor_centavos, tipo, meio, pagamento, cartao_id, compra_id, parcela, parcelas, data_compra, de_quem, reembolso_id, pagamento_informado_em, recorrente_id, recorrente_mes";
 type Linha = {
   id: string; data: string; descricao: string; categoria: string; valor_centavos: number; tipo: Lancamento["tipo"]; meio: Lancamento["meio"];
-  pagamento?: Lancamento["pagamento"]; cartao_id?: string | null; compra_id?: string | null; parcela?: number | null; parcelas?: number | null; data_compra?: string | null; de_quem?: string | null; reembolso_id?: string | null; pagamento_informado_em?: string | null; dono?: string;
+  pagamento?: Lancamento["pagamento"]; cartao_id?: string | null; compra_id?: string | null; parcela?: number | null; parcelas?: number | null; data_compra?: string | null; de_quem?: string | null; reembolso_id?: string | null; pagamento_informado_em?: string | null; recorrente_id?: string | null; recorrente_mes?: string | null; dono?: string;
 };
 const daLinha = (r: Linha): Lancamento => ({
   id: r.id, data: r.data, descricao: r.descricao, categoria: r.categoria, valor: r.valor_centavos, tipo: r.tipo, meio: r.meio,
-  pagamento: r.pagamento ?? null, cartaoId: r.cartao_id ?? null, compraId: r.compra_id ?? null, parcela: r.parcela ?? null, parcelas: r.parcelas ?? null, dataCompra: r.data_compra ?? null, deQuem: r.de_quem ?? null, reembolsoId: r.reembolso_id ?? null, pagamentoInformadoEm: r.pagamento_informado_em ?? null,
+  pagamento: r.pagamento ?? null, cartaoId: r.cartao_id ?? null, compraId: r.compra_id ?? null, parcela: r.parcela ?? null, parcelas: r.parcelas ?? null, dataCompra: r.data_compra ?? null, deQuem: r.de_quem ?? null, reembolsoId: r.reembolso_id ?? null, pagamentoInformadoEm: r.pagamento_informado_em ?? null, recorrenteId: r.recorrente_id ?? null, recorrenteMes: r.recorrente_mes ?? null,
 });
 const paraLinha = (l: NovoLancamento) => ({
   data: l.data, descricao: l.descricao, categoria: l.categoria, valor_centavos: l.valor, tipo: l.tipo, meio: l.meio,
   pagamento: l.pagamento ?? null, cartao_id: l.cartaoId ?? null, compra_id: l.compraId ?? null, parcela: l.parcela ?? null, parcelas: l.parcelas ?? null, data_compra: l.dataCompra ?? null, de_quem: l.deQuem ?? null,
+  recorrente_id: l.recorrenteId ?? null, recorrente_mes: l.recorrenteMes ?? null,
   ...(l.dono ? { dono: l.dono } : {}),
 });
+
+type LinhaFixo = { id: string; descricao: string; categoria: string; valor_centavos: number; tipo: Recorrente["tipo"]; meio: Recorrente["meio"]; pagamento: Recorrente["pagamento"]; cartao_id: string | null; dia: number; desde: string; ativo: boolean };
+const doFixo = (r: LinhaFixo): Recorrente => ({ id: r.id, descricao: r.descricao, categoria: r.categoria, valor: r.valor_centavos, tipo: r.tipo, meio: r.meio, pagamento: r.pagamento ?? null, cartaoId: r.cartao_id, dia: r.dia, desde: r.desde, ativo: r.ativo });
 
 const COLUNAS_CARTAO = "id, banco, apelido, tem_credito, tem_debito, dia_fechamento, dia_vencimento, usado_por, dono";
 type LinhaCartao = { id: string; banco: string; apelido: string | null; tem_credito: boolean; tem_debito: boolean; dia_fechamento: number | null; dia_vencimento: number | null; usado_por: string | null; dono: string };
@@ -131,6 +147,39 @@ export const repositorioSupabase = (eu: string): Repositorio => ({
     if (error) throw new Error("Não foi possível carregar os cartões que você usa.");
     return (data as LinhaCartao[]).map((r) => ({ ...doCartao(r), dono: r.dono }));
   },
+  async recorrentes() {
+    const { data, error } = await supabase!.from("recorrentes").select("id, descricao, categoria, valor_centavos, tipo, meio, pagamento, cartao_id, dia, desde, ativo").eq("dono", eu).eq("ativo", true).order("dia");
+    if (error) throw new Error("Não foi possível carregar os lançamentos fixos.");
+    return (data as LinhaFixo[]).map(doFixo);
+  },
+  async salvarRecorrente(r) {
+    const linha = { descricao: r.descricao, categoria: r.categoria, valor_centavos: r.valor, tipo: r.tipo, meio: r.meio, pagamento: r.pagamento ?? null, cartao_id: r.pagamento ? r.cartaoId : null, dia: r.dia, desde: r.desde, ativo: r.ativo };
+    const { data, error } = r.id
+      ? await supabase!.from("recorrentes").update(linha).eq("id", r.id).select("id").single()
+      : await supabase!.from("recorrentes").insert(linha).select("id").single();
+    if (error) throw new Error("Não foi possível salvar o lançamento fixo.");
+    return (data as { id: string }).id;
+  },
+  async pararRecorrente(id) {
+    const { error } = await supabase!.from("recorrentes").update({ ativo: false }).eq("id", id);
+    if (error) throw new Error("Não foi possível parar o lançamento fixo.");
+  },
+  async fixosLancados(mes) {
+    const { data, error } = await supabase!.from("lancamentos").select("recorrente_id").eq("dono", eu).eq("recorrente_mes", mes).not("recorrente_id", "is", null);
+    if (error) throw new Error("Não foi possível conferir os lançamentos fixos.");
+    return (data as { recorrente_id: string }[]).map((r) => r.recorrente_id);
+  },
+  async limites() {
+    const { data, error } = await supabase!.from("limites").select("categoria, valor_centavos").eq("dono", eu);
+    if (error) throw new Error("Não foi possível carregar os limites.");
+    return Object.fromEntries((data as { categoria: string; valor_centavos: number }[]).map((r) => [r.categoria, r.valor_centavos]));
+  },
+  async salvarLimite(categoria, valor) {
+    const { error } = valor === null
+      ? await supabase!.from("limites").delete().eq("dono", eu).eq("categoria", categoria)
+      : await supabase!.from("limites").upsert({ categoria, valor_centavos: valor }, { onConflict: "dono,categoria" });
+    if (error) throw new Error("Não foi possível salvar o limite.");
+  },
 });
 
 export const daLinhaLancamento = daLinha;
@@ -141,7 +190,11 @@ export function repositorioDemo(
   cartoesIniciais: Cartao[] = [],
   devoInicial: (Lancamento & { dono: string })[] = [],
   queUso: Cartao[] = [],
+  fixosIniciais: Recorrente[] = [],
+  limitesIniciais: Limites = {},
 ): Repositorio {
+  let fixos = [...fixosIniciais];
+  let limites = { ...limitesIniciais };
   let lista = [...inicial];
   let devo = [...devoInicial];
   let cartoes = [...cartoesIniciais];
@@ -204,6 +257,31 @@ export function repositorioDemo(
     },
     async cartoesQueUso() {
       return [...queUso];
+    },
+    async recorrentes() {
+      return fixos.filter((f) => f.ativo).sort((a, b) => a.dia - b.dia);
+    },
+    async salvarRecorrente(r) {
+      if (r.id) {
+        fixos = fixos.map((f) => (f.id === r.id ? ({ ...r } as Recorrente) : f));
+        return r.id;
+      }
+      const id = `fixo-${++seq}`;
+      fixos.push({ ...r, id });
+      return id;
+    },
+    async pararRecorrente(id) {
+      fixos = fixos.map((f) => (f.id === id ? { ...f, ativo: false } : f));
+    },
+    async fixosLancados(mes) {
+      return lista.filter((l) => l.recorrenteId && l.recorrenteMes === mes).map((l) => l.recorrenteId!);
+    },
+    async limites() {
+      return { ...limites };
+    },
+    async salvarLimite(categoria, valor) {
+      if (valor === null) delete limites[categoria];
+      else limites[categoria] = valor;
     },
   };
 }

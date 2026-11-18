@@ -5,6 +5,8 @@ import type { Repositorio } from "./repositorio";
 import type { RepositorioCasa } from "./repositorioCasa";
 import type { Despesa } from "./casa";
 import { compromissos, gastosPorCategoria, maioresGastos, sobraPorMes } from "./resumo";
+import { situacaoLimites, type Limites } from "./fixos";
+import { FormLimites } from "./Fixos";
 
 export const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 export const mesCurto = (m: string) => MESES_CURTOS[Number(m.slice(5, 7)) - 1];
@@ -22,6 +24,9 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
   const [lista, setLista] = useState<Lancamento[] | null>(null);
   const [contasCasa, setContasCasa] = useState<Despesa[]>([]);
   const [erro, setErro] = useState("");
+  const [limites, setLimites] = useState<Limites>({});
+  const [editandoLimites, setEditandoLimites] = useState(false);
+  useEffect(() => { repo.limites().then(setLimites).catch(() => setLimites({})); }, [repo]);
 
   useEffect(() => {
     let vivo = true;
@@ -49,6 +54,7 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
   const maxCat = Math.max(1, ...categorias.map((f) => Math.max(f.valor, f.anterior)));
   const totalFuturo = futuro.reduce((s, c) => s + c.valor, 0);
   const totalCasa = contasCasa.reduce((s, d) => s + d.valor, 0);
+  const situacao = situacaoLimites(limites, categorias);
   const variacao = totalAntes ? Math.round(((total - totalAntes) / totalAntes) * 100) : null;
 
   return (
@@ -73,6 +79,30 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
               </span>
             )}
             <span className="mini">Dinheiro, Pix, débito e faturas. VR/VA e compras de outros no seu cartão ficam de fora.</span>
+          </section>
+
+          <section className="painel">
+            <div className="cabeca">
+              <h2>Limites do mês</h2>
+              <button className="btn pequeno fantasma" onClick={() => setEditandoLimites(true)}>{situacao.length ? "Ajustar" : "+ Limites"}</button>
+            </div>
+            {situacao.length === 0 && <p className="nota">Defina quanto quer gastar no máximo por categoria. O app avisa quando chegar perto.</p>}
+            <ul className="barras">
+              {situacao.map((s) => (
+                <li key={s.categoria}>
+                  <div className="barra-topo">
+                    <span className="com-selo"><span className={`selo ${s.estado}`} aria-hidden="true">{s.estado === "passou" ? "!" : s.estado === "perto" ? "⚠" : "✓"}</span>{s.categoria}</span>
+                    <b>{reais(s.gasto)} <span className="mini-cinza">de {reais(s.limite)}</span></b>
+                  </div>
+                  <div className={`limite-barra ${s.estado}`} role="meter" aria-valuemin={0} aria-valuemax={s.limite} aria-valuenow={Math.min(s.gasto, s.limite)} aria-label={`${s.categoria}: ${reais(s.gasto)} de ${reais(s.limite)}`}>
+                    <span style={{ width: `${Math.min(1, s.parte) * 100}%` }} />
+                  </div>
+                  <span className="mini-cinza">
+                    {s.estado === "passou" ? `Passou ${reais(s.gasto - s.limite)} do limite` : s.estado === "perto" ? `Perto do limite · sobram ${reais(s.limite - s.gasto)}` : `Sobram ${reais(s.limite - s.gasto)}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section className="painel">
@@ -143,6 +173,13 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
             <Colunas pontos={sobra} rotulo="Sobra em dinheiro por mês" destacar={mes} />
           </section>
         </>
+      )}
+      {editandoLimites && (
+        <FormLimites inicial={limites} fechar={() => setEditandoLimites(false)} salvar={async (mudancas) => {
+          for (const [c, v] of Object.entries(mudancas)) await repo.salvarLimite(c, v);
+          setLimites(await repo.limites());
+          setEditandoLimites(false);
+        }} />
       )}
     </>
   );
