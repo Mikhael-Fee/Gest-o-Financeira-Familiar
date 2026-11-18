@@ -8,9 +8,12 @@ export type Cartao = {
   temDebito: boolean;
   diaFechamento: number | null;
   diaVencimento: number | null;
+  usadoPor?: string | null; // pessoa da família que costuma usar este cartão
+  dono?: string; // preenchido só nos cartões de outra pessoa que você usa
 };
 
-export const BANCOS = ["Nubank", "Inter", "Itaú", "Bradesco", "Caixa", "Banco do Brasil", "Santander", "Mercado Pago", "C6", "PicPay"];
+// Os da família primeiro.
+export const BANCOS = ["Bradesco", "Nubank", "Caixa", "Itaú", "Inter", "Mercado Pago", "Banco do Brasil", "Santander", "C6", "PicPay"];
 
 export const nomeCartao = (c: Pick<Cartao, "banco" | "apelido">) => (c.apelido ? `${c.banco} · ${c.apelido}` : c.banco);
 

@@ -15,12 +15,14 @@ export type Lancamento = {
   parcela?: number | null;
   parcelas?: number | null;
   dataCompra?: string | null;
+  deQuem?: string | null; // compra feita por outra pessoa da família no seu cartão
+  reembolsoId?: string | null; // preenchido quando você recebeu de volta
 };
 
 export type Pagamento = "debito" | "credito";
 
 export const CATEGORIAS: Record<Tipo, string[]> = {
-  entrada: ["Salário", "Freela", "Benefício", "Extra", "Outros"],
+  entrada: ["Salário", "Freela", "Benefício", "Extra", "Reembolso", "Outros"],
   saida: ["Alimentação", "Casa", "Transporte", "Cartão", "Saúde", "Lazer", "Educação", "Compras", "Outros"],
 };
 

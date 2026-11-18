@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase, dominioLogin } from "./supabase";
 import { usuarioParaEmail } from "./usuario";
-import { PERFIS_DEMO, cartoesDemo, casaDemo, lancamentosDemo } from "./demo";
+import { PERFIS_DEMO, cartoesDemo, cartoesQueUsoDemo, casaDemo, devoDemo, lancamentosDemo } from "./demo";
 import { Casa } from "./Casa";
 import { Familia } from "./Familia";
 import { repositorioPrivacidadeDemo, repositorioPrivacidadeSupabase } from "./privacidade";
@@ -132,7 +132,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
     [sessao.demo],
   );
   const repo = useMemo(
-    () => (sessao.demo ? repositorioDemo(lancamentosDemo(perfil.id), cartoesDemo(perfil.id)) : repositorioSupabase(perfil.id)),
+    () => (sessao.demo ? repositorioDemo(lancamentosDemo(perfil.id), cartoesDemo(perfil.id), devoDemo(perfil.id), cartoesQueUsoDemo(perfil.id)) : repositorioSupabase(perfil.id)),
     [sessao.demo, perfil.id],
   );
 
@@ -171,7 +171,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
       </header>
 
       <main className="conteudo wrap">
-        {aba === "minhas" && <Minhas key={perfil.id} repo={repo} perfil={perfil} casa={repoCasa} />}
+        {aba === "minhas" && <Minhas key={perfil.id} repo={repo} perfil={perfil} casa={repoCasa} familia={familia} />}
 
         {aba === "casa" && familia.length > 0 && <Casa key={perfil.id} repo={repoCasa} eu={perfil} familia={familia} />}
         {aba === "casa" && familia.length === 0 && <p className="nota">Carregando a família…</p>}

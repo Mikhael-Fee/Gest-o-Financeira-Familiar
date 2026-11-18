@@ -21,7 +21,7 @@ describe("privacidade na demonstração", () => {
   it("tudo mostra também os lançamentos, e voltar para nada esconde", async () => {
     const r = repo();
     await r.salvarNivel("demo-filho", "tudo");
-    expect((await r.ver("demo-filho", "2026-11")).lancamentos?.length).toBe(9);
+    expect((await r.ver("demo-filho", "2026-11")).lancamentos?.length).toBe(11);
     await r.salvarNivel("demo-filho", "nada");
     expect((await r.ver("demo-filho", "2026-11")).resumo).toBeNull();
   });

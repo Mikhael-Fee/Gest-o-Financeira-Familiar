@@ -14,23 +14,31 @@ type Como = "dinheiro" | "debito" | "credito" | "beneficio";
 const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const novoId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
-export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perfil; casa: RepositorioCasa }) {
+export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; perfil: Perfil; casa: RepositorioCasa; familia: Perfil[] }) {
+  const nomeDe = (id?: string | null) => familia.find((p) => p.id === id)?.nome ?? "Alguém";
   const nome = perfil.nome;
   const perguntaCasa = !podeGerenciarCasa(perfil);
   const [mes, setMes] = useState(() => mesDe(hojeISO()));
   const [lista, setLista] = useState<Lancamento[] | null>(null);
   const [cartoes, setCartoes] = useState<Cartao[]>([]);
+  const [queUso, setQueUso] = useState<Cartao[]>([]);
   const [erro, setErro] = useState("");
   const [editando, setEditando] = useState<NovoLancamento | null>(null);
   const [gerenciarCartoes, setGerenciarCartoes] = useState(false);
+  const [aReceber, setAReceber] = useState<Lancamento[]>([]);
+  const [devo, setDevo] = useState<(Lancamento & { dono: string })[]>([]);
+  const [recebendo, setRecebendo] = useState<string | null>(null); // pessoa
   const [aviso, setAviso] = useState("");
 
   const carregar = useCallback(async () => {
     setErro("");
     try {
-      const [l, c] = await Promise.all([repo.listar(mes), repo.cartoes()]);
+      const [l, c, ar, dv, qu] = await Promise.all([repo.listar(mes), repo.cartoes(), repo.aReceber(), repo.devo(), repo.cartoesQueUso()]);
       setLista(l);
       setCartoes(c);
+      setQueUso(qu);
+      setAReceber(ar);
+      setDevo(dv);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar.");
       setLista([]);
@@ -62,8 +70,19 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
     return m;
   }, [lista]);
 
-  const novo = () =>
-    setEditando({ data: mes === mesDe(hojeISO()) ? hojeISO() : `${mes}-01`, descricao: "", categoria: "Alimentação", valor: 0, tipo: "saida", meio: "dinheiro" });
+  const agrupar = <T extends Lancamento>(itens: T[], chave: (l: T) => string) => {
+    const m = new Map<string, T[]>();
+    for (const l of itens) m.set(chave(l), [...(m.get(chave(l)) ?? []), l]);
+    return [...m.entries()].map(([pessoa, ls]) => ({ pessoa, itens: ls, total: ls.reduce((s, l) => s + l.valor, 0) }));
+  };
+  const receberPorPessoa = agrupar(aReceber, (l) => l.deQuem!);
+  const devoPorPessoa = agrupar(devo, (l) => l.dono);
+
+  const novo = (cartao?: Cartao) =>
+    setEditando({
+      data: mes === mesDe(hojeISO()) ? hojeISO() : `${mes}-01`, descricao: "", categoria: cartao ? "Compras" : "Alimentação", valor: 0, tipo: "saida", meio: "dinheiro",
+      ...(cartao ? { pagamento: "credito" as const, cartaoId: cartao.id, deQuem: perfil.id, dono: cartao.dono } : {}),
+    });
 
   return (
     <>
@@ -97,7 +116,7 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
       <section className="painel">
         <div className="cabeca">
           <h2>Cartões</h2>
-          <button className="link" onClick={() => setGerenciarCartoes(true)}>{cartoes.length ? "Gerenciar" : "Cadastrar"}</button>
+          <button className="btn pequeno fantasma" onClick={() => setGerenciarCartoes(true)}>{cartoes.length ? "Gerenciar cartões" : "+ Cartão"}</button>
         </div>
         {cartoes.length === 0 && <p className="nota">Cadastre seus cartões para lançar compras no débito, no crédito e parceladas.</p>}
         <ul className="lista">
@@ -111,6 +130,7 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
                   <span>
                     {[c.temCredito && "Crédito", c.temDebito && "Débito"].filter(Boolean).join(" e ")}
                     {c.temCredito && ` · fecha dia ${c.diaFechamento}, vence dia ${c.diaVencimento}`}
+                    {c.usadoPor && c.usadoPor !== perfil.id && ` · usado por ${nomeDe(c.usadoPor)}`}
                   </span>
                 </span>
                 {c.temCredito && (
@@ -125,10 +145,75 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
         </ul>
       </section>
 
+      {queUso.length > 0 && (
+        <section className="painel">
+          <h2>Cartões que uso</h2>
+          <ul className="lista">
+            {queUso.map((c) => {
+              const aPagar = devo.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
+              return (
+                <li key={c.id}>
+                  <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
+                  <span className="texto">
+                    <b>{nomeCartao(c)}</b>
+                    <span>De {nomeDe(c.dono)} · fecha dia {c.diaFechamento}, vence dia {c.diaVencimento}{aPagar > 0 ? ` · você deve ${reais(aPagar)}` : ""}</span>
+                  </span>
+                  <span className="fim"><button className="btn pequeno" onClick={() => novo(c)}>+ Compra</button></span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="nota">Cartões no nome de outra pessoa. A compra fica na fatura dela, e as duas pessoas veem.</p>
+        </section>
+      )}
+
+      {receberPorPessoa.length > 0 && (
+        <section className="painel">
+          <div className="cabeca"><h2>A receber</h2><span className="nota">Compras de outros nos seus cartões</span></div>
+          <ul className="lista">
+            {receberPorPessoa.map((g) => (
+              <li key={g.pessoa}>
+                <span className="avatar" aria-hidden="true">{nomeDe(g.pessoa).slice(0, 1)}</span>
+                <span className="texto"><b>{nomeDe(g.pessoa)} te deve</b><span>{g.itens.length} {g.itens.length === 1 ? "compra" : "compras"}</span></span>
+                <span className="fim">
+                  <b className="valor">{reais(g.total)}</b>
+                  <button className="btn pequeno" onClick={() => setRecebendo(g.pessoa)}>Recebi</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {devoPorPessoa.length > 0 && (
+        <section className="painel">
+          <h2>Você deve</h2>
+          {devoPorPessoa.map((g) => (
+            <div key={g.pessoa} className="filho">
+              <div className="cabeca"><b>Para {nomeDe(g.pessoa)}</b><b className="valor">{reais(g.total)}</b></div>
+              <ul className="lista">
+                {g.itens.map((l) => {
+                  const c = queUso.find((x) => x.id === l.cartaoId);
+                  const texto = (
+                    <>
+                      <span className="texto"><b>{l.descricao}</b><span>{c ? `${c.banco} · ` : ""}{l.pagamento === "credito" ? `fatura ${dataCurta(l.data)}` : dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}</span></span>
+                      <span className="valor">{reais(l.valor)}</span>
+                    </>
+                  );
+                  // Só dá para corrigir compras feitas em cartões que você ainda usa.
+                  return <li key={l.id}>{c ? <button className="item" onClick={() => setEditando(l)}>{texto}</button> : texto}</li>;
+                })}
+              </ul>
+            </div>
+          ))}
+          <p className="nota">Compras suas no cartão de outra pessoa. Saem daqui quando a pessoa marcar que recebeu.</p>
+        </section>
+      )}
+
       <section className="painel">
         <div className="cabeca">
           <h2>Lançamentos</h2>
-          <button className="btn pequeno" onClick={novo}>+ Lançar</button>
+          <button className="btn pequeno" onClick={() => novo()}>+ Lançar</button>
         </div>
         {erro && <p className="erro" role="alert">{erro}</p>}
         {lista === null && <p className="nota">Carregando…</p>}
@@ -145,6 +230,7 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
               l.pagamento === "credito" ? `${c ? c.banco : "Crédito"}${l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : " · crédito"}` : null,
               l.pagamento === "debito" ? `${c ? c.banco : ""} débito`.trim() : null,
               l.meio === "beneficio" ? "VR/VA" : null,
+              l.deQuem ? `de ${nomeDe(l.deQuem)}${l.reembolsoId ? " (pago)" : ""}` : null,
             ].filter(Boolean);
             return (
               <li key={l.id}>
@@ -165,7 +251,10 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
       {editando && (
         <Formulario
           inicial={editando}
-          cartoes={cartoes}
+          cartoes={[...cartoes, ...queUso]}
+          eu={perfil}
+          nomeDe={nomeDe}
+          familia={familia}
           perguntaCasa={perguntaCasa && !editando.id}
           cadastrarCartao={() => { setEditando(null); setGerenciarCartoes(true); }}
           fechar={() => setEditando(null)}
@@ -175,8 +264,8 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
             const l = itens[0];
             if (paraCasa !== "nao") await casa.informarAjuda(perfil.id, { data: l.dataCompra ?? l.data, descricao: l.descricao, valor: l.valor, meio: l.meio, forma: paraCasa });
             setEditando(null);
-            setAviso(itens.length > 1 ? `${itens.length} parcelas lançadas` : paraCasa !== "nao" ? "Salvo e informado na Casa" : l.id ? "Lançamento atualizado" : "Lançamento salvo");
-            if (mesDe(l.data) !== mes) setMes(mesDe(l.data));
+            setAviso(l.dono ? `Lançado no cartão de ${nomeDe(l.dono)}` : itens.length > 1 ? `${itens.length} parcelas lançadas` : paraCasa !== "nao" ? "Salvo e informado na Casa" : l.id ? "Lançamento atualizado" : "Lançamento salvo");
+            if (!l.dono && mesDe(l.data) !== mes) setMes(mesDe(l.data));
             else await carregar();
           }}
           apagar={
@@ -192,8 +281,22 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
           }
         />
       )}
+      {recebendo && (
+        <Receber
+          nome={nomeDe(recebendo)}
+          itens={aReceber.filter((l) => l.deQuem === recebendo)}
+          fechar={() => setRecebendo(null)}
+          salvar={async (ids, data) => {
+            await repo.registrarReembolso(ids, data, `Reembolso de ${nomeDe(recebendo)}`);
+            setRecebendo(null);
+            setAviso("Recebimento registrado");
+            if (mesDe(data) !== mes) setMes(mesDe(data));
+            else await carregar();
+          }}
+        />
+      )}
       {gerenciarCartoes && (
-        <GerenciarCartoes cartoes={cartoes} fechar={() => setGerenciarCartoes(false)}
+        <GerenciarCartoes cartoes={cartoes} eu={perfil} familia={familia} fechar={() => setGerenciarCartoes(false)}
           salvar={async (c) => { await repo.salvarCartao(c); setAviso("Cartão salvo"); await carregar(); }}
           remover={async (id) => { await repo.removerCartao(id); setAviso("Cartão removido"); await carregar(); }} />
       )}
@@ -202,9 +305,12 @@ export function Minhas({ repo, perfil, casa }: { repo: Repositorio; perfil: Perf
   );
 }
 
-function Formulario({ inicial, cartoes, perguntaCasa, cadastrarCartao, fechar, salvar, apagar }: {
+function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadastrarCartao, fechar, salvar, apagar }: {
   inicial: NovoLancamento;
   cartoes: Cartao[];
+  eu: Perfil;
+  nomeDe: (id?: string | null) => string;
+  familia: Perfil[];
   perguntaCasa: boolean;
   cadastrarCartao: () => void;
   fechar: () => void;
@@ -225,6 +331,7 @@ function Formulario({ inicial, cartoes, perguntaCasa, cadastrarCartao, fechar, s
   const [parcelaAtual, setParcelaAtual] = useState("1");
   const [mesFatura, setMesFatura] = useState(mesDe(hojeISO()));
   const [paraCasa, setParaCasa] = useState<ParaCasa>("enviado");
+  const [deQuem, setDeQuem] = useState(inicial.deQuem ?? "");
 
   const categorias = CATEGORIAS[tipo];
   useEffect(() => {
@@ -232,12 +339,20 @@ function Formulario({ inicial, cartoes, perguntaCasa, cadastrarCartao, fechar, s
     if (tipo === "entrada" && (como === "debito" || como === "credito")) setComo("dinheiro");
   }, [tipo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const opcoesCartao = cartoes.filter((c) => (como === "credito" ? c.temCredito : c.temDebito));
+  // Cartão de outra pessoa que você usa: só no crédito.
+  const opcoesCartao = cartoes.filter((c) => (como === "credito" ? c.temCredito : c.temDebito && !c.dono));
   useEffect(() => {
     if ((como === "credito" || como === "debito") && !opcoesCartao.some((c) => c.id === cartaoId)) setCartaoId(opcoesCartao[0]?.id ?? "");
   }, [como]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cartao = cartoes.find((c) => c.id === cartaoId);
+  // Cartão que outra pessoa costuma usar: a compra já vem marcada como dela.
+  useEffect(() => {
+    if (!editando) setDeQuem(cartao?.usadoPor && cartao.usadoPor !== eu.id ? cartao.usadoPor : "");
+  }, [cartaoId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const comCartao = tipo === "saida" && (como === "debito" || como === "credito");
+  const donoCartao = comCartao && cartao?.dono && cartao.dono !== eu.id ? cartao.dono : null;
+  const compraNoCartaoDeOutro = Boolean(inicial.dono);
   const nParcelas = Math.max(1, Math.min(48, parseInt(parcelas, 10) || 1));
   const nAtual = Math.max(1, Math.min(nParcelas, parseInt(parcelaAtual, 10) || 1));
   const credito = como === "credito" && !editando;
@@ -253,7 +368,7 @@ function Formulario({ inicial, cartoes, perguntaCasa, cadastrarCartao, fechar, s
     return gerarParcelas(primeiro, cartao.diaVencimento, emAndamento ? nAtual : 1, nParcelas);
   }, [credito, cartao, data, emAndamento, mesFatura, nAtual, nParcelas]);
 
-  const mostrarCasa = perguntaCasa && tipo === "saida" && categoria === "Casa" && !parcelado;
+  const mostrarCasa = perguntaCasa && tipo === "saida" && categoria === "Casa" && !parcelado && !(comCartao && deQuem) && !donoCartao;
 
   async function enviar(): Promise<string | void> {
     if (!descricao.trim()) return "Escreva uma descrição.";
@@ -266,6 +381,8 @@ function Formulario({ inicial, cartoes, perguntaCasa, cadastrarCartao, fechar, s
       pagamento: tipo === "saida" && (como === "debito" || como === "credito") ? (como as Pagamento) : null,
       cartaoId: tipo === "saida" && (como === "debito" || como === "credito") ? cartaoId : null,
       compraId: inicial.compraId ?? null, parcela: inicial.parcela ?? null, parcelas: inicial.parcelas ?? null, dataCompra: inicial.dataCompra ?? null,
+      deQuem: donoCartao ? eu.id : comCartao && deQuem ? deQuem : null, reembolsoId: inicial.reembolsoId ?? null,
+      ...(donoCartao ? { dono: donoCartao } : {}),
     };
     if (editando) {
       // Editar mexe só nesta linha (numa compra parcelada, só nesta parcela).
@@ -289,26 +406,40 @@ function Formulario({ inicial, cartoes, perguntaCasa, cadastrarCartao, fechar, s
 
   return (
     <Folha
-      titulo={editando ? (ehParcelaExistente ? `Parcela ${inicial.parcela}/${inicial.parcelas}` : "Editar lançamento") : "Novo lançamento"}
+      titulo={compraNoCartaoDeOutro && !editando ? `Compra no cartão de ${nomeDe(inicial.dono)}` : editando ? (ehParcelaExistente ? `Parcela ${inicial.parcela}/${inicial.parcelas}` : "Editar lançamento") : "Novo lançamento"}
       fechar={fechar}
       salvar={enviar}
       apagar={apagar}
       textoApagar={ehParcelaExistente ? "Apagar a compra toda" : "Apagar lançamento"}
     >
-      {!ehParcelaExistente && <Segmento rotulo="Tipo" valor={tipo} mudar={setTipo} opcoes={[["saida", "Saída"], ["entrada", "Entrada"]]} />}
-      {!ehParcelaExistente && <Segmento rotulo="Como" valor={como} mudar={setComo} opcoes={comoOpcoes} />}
+      {!ehParcelaExistente && !compraNoCartaoDeOutro && <Segmento rotulo="Tipo" valor={tipo} mudar={setTipo} opcoes={[["saida", "Saída"], ["entrada", "Entrada"]]} />}
+      {!ehParcelaExistente && !compraNoCartaoDeOutro && <Segmento rotulo="Como" valor={como} mudar={setComo} opcoes={comoOpcoes} />}
 
-      {(como === "debito" || como === "credito") && tipo === "saida" && !ehParcelaExistente && (
+      {(como === "debito" || como === "credito") && tipo === "saida" && !ehParcelaExistente && !compraNoCartaoDeOutro && (
         opcoesCartao.length ? (
           <label className="campo" htmlFor="f-cartao">
             Cartão
             <select id="f-cartao" value={cartaoId} onChange={(e) => setCartaoId(e.target.value)}>
-              {opcoesCartao.map((c) => <option key={c.id} value={c.id}>{nomeCartao(c)}</option>)}
+              {opcoesCartao.map((c) => <option key={c.id} value={c.id}>{nomeCartao(c)}{c.dono ? ` (de ${nomeDe(c.dono)})` : ""}</option>)}
             </select>
           </label>
         ) : (
           <p className="nota">Nenhum cartão com {como === "credito" ? "crédito" : "débito"}. <button type="button" className="link" onClick={cadastrarCartao}>Cadastrar cartão</button></p>
         )
+      )}
+
+      {donoCartao && (
+        <div className="previa"><p>Cartão de <b>{nomeDe(donoCartao)}</b>, sempre no crédito. A compra entra na fatura e aparece para vocês dois. Fica em “Você deve” até {nomeDe(donoCartao)} marcar que recebeu.</p></div>
+      )}
+
+      {comCartao && opcoesCartao.length > 0 && !inicial.reembolsoId && !donoCartao && (
+        <label className="campo" htmlFor="f-dequem">
+          De quem é a compra?
+          <select id="f-dequem" value={deQuem} onChange={(e) => setDeQuem(e.target.value)}>
+            <option value="">Minha</option>
+            {familia.filter((p) => p.id !== eu.id).map((p) => <option key={p.id} value={p.id}>De {p.nome} (vai me pagar)</option>)}
+          </select>
+        </label>
       )}
 
       <label className="campo" htmlFor="f-descricao">
@@ -396,14 +527,16 @@ function Formulario({ inicial, cartoes, perguntaCasa, cadastrarCartao, fechar, s
   );
 }
 
-function GerenciarCartoes({ cartoes, fechar, salvar, remover }: {
+function GerenciarCartoes({ cartoes, eu, familia, fechar, salvar, remover }: {
   cartoes: Cartao[];
+  eu: Perfil;
+  familia: Perfil[];
   fechar: () => void;
   salvar: (c: Omit<Cartao, "id"> & { id?: string }) => Promise<void>;
   remover: (id: string) => Promise<void>;
 }) {
-  const [editando, setEditando] = useState<(Omit<Cartao, "id"> & { id?: string }) | null>(cartoes.length ? null : { banco: "Nubank", apelido: null, temCredito: true, temDebito: false, diaFechamento: null, diaVencimento: null });
-  if (editando) return <FormCartao inicial={editando} voltar={() => (cartoes.length ? setEditando(null) : fechar())} salvar={async (c) => { await salvar(c); setEditando(null); }} remover={editando.id ? async () => { await remover(editando.id!); setEditando(null); } : undefined} />;
+  const [editando, setEditando] = useState<(Omit<Cartao, "id"> & { id?: string }) | null>(cartoes.length ? null : { banco: "Bradesco", apelido: null, temCredito: true, temDebito: true, diaFechamento: null, diaVencimento: null, usadoPor: null });
+  if (editando) return <FormCartao eu={eu} familia={familia} inicial={editando} voltar={() => (cartoes.length ? setEditando(null) : fechar())} salvar={async (c) => { await salvar(c); setEditando(null); }} remover={editando.id ? async () => { await remover(editando.id!); setEditando(null); } : undefined} />;
   return (
     <Folha titulo="Meus cartões" fechar={fechar} textoSalvar="Pronto" salvar={async () => fechar()}>
       <ul className="lista">
@@ -417,12 +550,14 @@ function GerenciarCartoes({ cartoes, fechar, salvar, remover }: {
           </li>
         ))}
       </ul>
-      <button type="button" className="btn fantasma" onClick={() => setEditando({ banco: "Nubank", apelido: null, temCredito: true, temDebito: false, diaFechamento: null, diaVencimento: null })}>+ Adicionar cartão</button>
+      <button type="button" className="btn fantasma" onClick={() => setEditando({ banco: "Bradesco", apelido: null, temCredito: true, temDebito: true, diaFechamento: null, diaVencimento: null, usadoPor: null })}>+ Adicionar cartão</button>
     </Folha>
   );
 }
 
-function FormCartao({ inicial, voltar, salvar, remover }: {
+function FormCartao({ eu, familia, inicial, voltar, salvar, remover }: {
+  eu: Perfil;
+  familia: Perfil[];
   inicial: Omit<Cartao, "id"> & { id?: string };
   voltar: () => void;
   salvar: (c: Omit<Cartao, "id"> & { id?: string }) => Promise<void>;
@@ -433,6 +568,7 @@ function FormCartao({ inicial, voltar, salvar, remover }: {
   const [outro, setOutro] = useState(conhecido ? "" : inicial.banco);
   const [apelido, setApelido] = useState(inicial.apelido ?? "");
   const [funcoes, setFuncoes] = useState<"credito" | "debito" | "ambos">(inicial.temCredito && inicial.temDebito ? "ambos" : inicial.temDebito ? "debito" : "credito");
+  const [usadoPor, setUsadoPor] = useState(inicial.usadoPor && inicial.usadoPor !== eu.id ? inicial.usadoPor : "");
   const [fechamento, setFechamento] = useState(inicial.diaFechamento ? String(inicial.diaFechamento) : "");
   const [vencimento, setVencimento] = useState(inicial.diaVencimento ? String(inicial.diaVencimento) : "");
   const temCredito = funcoes !== "debito";
@@ -443,7 +579,7 @@ function FormCartao({ inicial, voltar, salvar, remover }: {
       const nomeBanco = banco === "Outro" ? outro.trim() : banco;
       if (!nomeBanco) return "Escreva o nome do banco.";
       if (temCredito && (!dia(fechamento) || !dia(vencimento))) return "Informe o dia de fechamento e o de vencimento (1 a 31).";
-      await salvar({ id: inicial.id, banco: nomeBanco, apelido: apelido.trim() || null, temCredito, temDebito: funcoes !== "credito", diaFechamento: temCredito ? dia(fechamento) : null, diaVencimento: temCredito ? dia(vencimento) : null });
+      await salvar({ id: inicial.id, banco: nomeBanco, apelido: apelido.trim() || null, temCredito, temDebito: funcoes !== "credito", diaFechamento: temCredito ? dia(fechamento) : null, diaVencimento: temCredito ? dia(vencimento) : null, usadoPor: usadoPor || null });
     }}>
       <label className="campo" htmlFor="k-banco">
         Banco
@@ -456,15 +592,56 @@ function FormCartao({ inicial, voltar, salvar, remover }: {
         <label className="campo" htmlFor="k-outro">Nome do banco<input id="k-outro" value={outro} maxLength={30} onChange={(e) => setOutro(e.target.value)} /></label>
       )}
       <label className="campo" htmlFor="k-apelido">Apelido (opcional)<input id="k-apelido" value={apelido} maxLength={30} onChange={(e) => setApelido(e.target.value)} placeholder="Ex.: final 1234, Black" /></label>
-      <Segmento rotulo="Funções" valor={funcoes} mudar={setFuncoes} opcoes={[["credito", "Crédito"], ["debito", "Débito"], ["ambos", "Os dois"]]} />
+      <Segmento rotulo="Funções" valor={funcoes} mudar={setFuncoes} opcoes={[["ambos", "Flex"], ["credito", "Só crédito"], ["debito", "Só débito"]]} />
+      {funcoes === "ambos" && <p className="nota">Flex: em cada compra você escolhe se foi no crédito ou no débito.</p>}
       {temCredito && (
         <div className="duas">
           <label className="campo" htmlFor="k-fecha">Dia que fecha<input id="k-fecha" inputMode="numeric" value={fechamento} onChange={(e) => setFechamento(e.target.value.replace(/\D/g, "").slice(0, 2))} placeholder="Ex.: 3" /></label>
           <label className="campo" htmlFor="k-vence">Dia que vence<input id="k-vence" inputMode="numeric" value={vencimento} onChange={(e) => setVencimento(e.target.value.replace(/\D/g, "").slice(0, 2))} placeholder="Ex.: 10" /></label>
         </div>
       )}
+      <label className="campo" htmlFor="k-usa">
+        Quem usa este cartão
+        <select id="k-usa" value={usadoPor} onChange={(e) => setUsadoPor(e.target.value)}>
+          <option value="">Eu</option>
+          {familia.filter((p) => p.id !== eu.id).map((p) => <option key={p.id} value={p.id}>{p.nome} (paga para mim)</option>)}
+        </select>
+      </label>
       {temCredito && <p className="nota">Compras feitas até o dia antes do fechamento entram na fatura do mês; a partir do fechamento, na seguinte.</p>}
     </Folha>
   );
 }
 
+
+function Receber({ nome, itens, fechar, salvar }: {
+  nome: string;
+  itens: Lancamento[];
+  fechar: () => void;
+  salvar: (ids: string[], data: string) => Promise<void>;
+}) {
+  const [marcados, setMarcados] = useState<string[]>(itens.map((l) => l.id));
+  const [data, setData] = useState(hojeISO());
+  const total = itens.filter((l) => marcados.includes(l.id)).reduce((s, l) => s + l.valor, 0);
+  return (
+    <Folha titulo={`Recebi de ${nome}`} fechar={fechar} textoSalvar={`Registrar ${reais(total)}`} salvar={async () => {
+      if (!marcados.length) return "Marque pelo menos uma compra.";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return "Escolha a data.";
+      await salvar(marcados, data);
+    }}>
+      <p className="nota">Marque o que {nome} pagou. Entra como uma entrada de {reais(total)} na sua sobra do mês.</p>
+      <ul className="lista">
+        {itens.map((l) => (
+          <li key={l.id}>
+            <label className="item marcar-item" htmlFor={`r-${l.id}`}>
+              <input id={`r-${l.id}`} type="checkbox" checked={marcados.includes(l.id)}
+                onChange={(e) => setMarcados(e.target.checked ? [...marcados, l.id] : marcados.filter((x) => x !== l.id))} />
+              <span className="texto"><b>{l.descricao}</b><span>{l.categoria} · {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}</span></span>
+              <span className="valor">{reais(l.valor)}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      <label className="campo" htmlFor="r-data">Data do recebimento<input id="r-data" type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
+    </Folha>
+  );
+}

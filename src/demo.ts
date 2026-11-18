@@ -46,10 +46,20 @@ const EXEMPLOS: Record<string, Exemplo[]> = {
   ],
 };
 
+/** Compras da Mãe no cartão Itaú do Filho (ela usa e paga a ele). */
+function comprasDaMaeNoCartaoDoFilho(mes: string): Lancamento[] {
+  const base = { tipo: "saida" as const, meio: "dinheiro" as const, pagamento: "credito" as const, cartaoId: "demo-itau", deQuem: "demo-mae", reembolsoId: null };
+  return [
+    { ...base, id: "demo-filho-mae-1", data: `${mes}-02`, descricao: "Farmácia", categoria: "Saúde", valor: 15000 },
+    { ...base, id: "demo-filho-mae-2", data: `${mes}-02`, descricao: "Sapato", categoria: "Compras", valor: 18990 },
+  ];
+}
+
 /** Lançamentos de exemplo no mês atual, para a demonstração sempre ter o que mostrar. */
 export function lancamentosDemo(perfilId: string, hoje = new Date()): Lancamento[] {
   const mes = mesDe(hojeISO(hoje));
-  return (EXEMPLOS[perfilId] ?? [])
+  const extras = perfilId === "demo-filho" ? comprasDaMaeNoCartaoDoFilho(mes) : [];
+  return [...extras, ...(EXEMPLOS[perfilId] ?? [])
     .filter(([dia]) => dia <= Math.max(hoje.getDate(), 16))
     .map(([dia, descricao, categoria, valor, tipo, meio], i) => ({
       id: `${perfilId}-${i}`,
@@ -62,7 +72,13 @@ export function lancamentosDemo(perfilId: string, hoje = new Date()): Lancamento
       ...(perfilId === "demo-filho" && descricao === "Notebook"
         ? { pagamento: "credito" as const, cartaoId: "demo-nubank", compraId: "demo-compra-notebook", parcela: 7, parcelas: 10, dataCompra: null }
         : {}),
-    }));
+    }))];
+}
+
+/** O que a Mãe deve ao Filho na demonstração. */
+export function devoDemo(perfilId: string, hoje = new Date()) {
+  if (perfilId !== "demo-mae") return [];
+  return comprasDaMaeNoCartaoDoFilho(mesDe(hojeISO(hoje))).map((l) => ({ ...l, dono: "demo-filho" }));
 }
 
 
@@ -96,11 +112,18 @@ export function casaDemo(hoje = new Date()): DadosCasa {
   };
 }
 
+/** Cartões do Filho que a Mãe usa (ela vê e lança compras neles). */
+export function cartoesQueUsoDemo(perfilId: string): Cartao[] {
+  if (perfilId !== "demo-mae") return [];
+  return cartoesDemo("demo-filho").filter((c) => c.usadoPor === "demo-mae").map((c) => ({ ...c, dono: "demo-filho" }));
+}
+
 /** Cartões de exemplo (só o Filho tem, para mostrar a fatura). */
 export function cartoesDemo(perfilId: string): Cartao[] {
   if (perfilId !== "demo-filho") return [];
   return [
     { id: "demo-nubank", banco: "Nubank", apelido: null, temCredito: true, temDebito: false, diaFechamento: 3, diaVencimento: 10 },
     { id: "demo-inter", banco: "Inter", apelido: null, temCredito: true, temDebito: true, diaFechamento: 28, diaVencimento: 5 },
+    { id: "demo-itau", banco: "Itaú", apelido: "da Mãe", temCredito: true, temDebito: true, diaFechamento: 25, diaVencimento: 2, usadoPor: "demo-mae" },
   ];
 }
