@@ -163,3 +163,14 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 
 /* Aviso de que a pessoa já pagou: chama atenção para confirmar. */
 .texto .destaque-texto { color: var(--accent); font-weight: 600; }
+
+/* Tela mais limpa: ajustes no topo e pendências num quadro só. */
+.btn-icone { width: 40px; height: 40px; border-radius: 12px; border: 0; background: var(--surface); color: var(--fg); display: grid; place-items: center; cursor: pointer; }
+.btn-icone svg { width: 22px; height: 22px; }
+.btn-icone[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.titulo-pagina { font: 700 26px var(--display); margin: 4px 0 0; }
+.lista .com-detalhe { display: block; }
+.linha-item { display: flex; align-items: center; gap: 10px; }
+.linha-item .item { flex: 1; min-width: 0; }
+.lista.sub { margin: 6px 0 0 46px; }
+.avatar.deve { background: var(--benefit-soft); color: var(--benefit); }
