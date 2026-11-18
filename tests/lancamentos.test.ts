@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lerValor, reais } from "../src/dinheiro";
-import { nomeMes, resumir, somarMes, type Lancamento } from "../src/lancamentos";
+import { dividirTotal, nomeMes, resumir, somarMes, type Lancamento } from "../src/lancamentos";
 import { lancamentosDemo } from "../src/demo";
 import { repositorioDemo } from "../src/repositorio";
 
@@ -78,5 +78,18 @@ describe("compra no cartão de outra pessoa (demonstração)", () => {
     await repo.salvarVarios([{ data: "2026-12-02", descricao: "Mercado", categoria: "Compras", valor: 9000, tipo: "saida", meio: "dinheiro", pagamento: "credito", cartaoId: itau.id, deQuem: "demo-mae", dono: "demo-filho" }]);
     expect((await repo.devo()).map((l) => l.descricao)).toContain("Mercado");
     expect(await repo.listar("2026-12")).toHaveLength(0);
+  });
+});
+
+describe("dividirTotal", () => {
+  it("divide igualmente quando dá certo", () => {
+    expect(dividirTotal(30000, 3)).toEqual([10000, 10000, 10000]);
+  });
+  it("põe os centavos que sobram na 1ª parcela", () => {
+    expect(dividirTotal(10000, 3)).toEqual([3334, 3333, 3333]);
+    expect(dividirTotal(10000, 3).reduce((a, b) => a + b, 0)).toBe(10000);
+  });
+  it("uma parcela é o próprio total", () => {
+    expect(dividirTotal(1990, 1)).toEqual([1990]);
   });
 });
