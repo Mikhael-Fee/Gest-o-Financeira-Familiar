@@ -1,3 +1,10 @@
+# Instruções para agentes
+
+> **Atualização (18/11/2026):** o projeto passou a ser construído em etapas pequenas e simples.
+> Siga [docs/ETAPAS.md](docs/ETAPAS.md) e trabalhe só na etapa atual. A especificação original
+> (`docs/ESPECIFICACAO_CODEX.md`) e as instruções abaixo são referência para etapas futuras,
+> não o escopo de agora. Quando divergirem de docs/ETAPAS.md, vale docs/ETAPAS.md.
+
 # Instruções de desenvolvimento para o Codex
 
 ## Objetivo e fontes
