@@ -139,3 +139,14 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .erro.painel { padding: 14px; }
 .segmento.tres-op { grid-template-columns: repeat(3, 1fr); }
 .segmento.tres-op button { font-size: 12px; padding: 9px 6px; }
+
+/* Etapa 4: Privacidade */
+.opcoes { display: flex; flex-direction: column; gap: 8px; }
+.opcao { display: flex; align-items: flex-start; gap: 12px; text-align: left; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; padding: 12px; font: inherit; cursor: pointer; }
+.opcao[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.marca-radio { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted); margin-top: 1px; }
+.opcao[aria-checked="true"] .marca-radio { border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--bg), inset 0 0 0 10px var(--accent); }
+.opcao .texto span { white-space: normal; }
+.trancado { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px dashed var(--line); border-radius: 16px; }
+.cadeado { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.cadeado svg { width: 18px; height: 18px; }
