@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 import type { Lancamento } from "./lancamentos";
 import { somarMes } from "./lancamentos";
 import type { Cartao } from "./cartoes";
-import type { Limites, NovoRecorrente, Recorrente } from "./fixos";
+import type { HistoricoFixos, Limites, NovoRecorrente, Recorrente } from "./fixos";
 
 export type NovoLancamento = Omit<Lancamento, "id"> & { id?: string; /** Só ao lançar no cartão de outra pessoa: a compra fica na conta dela. */ dono?: string };
 
@@ -40,6 +40,11 @@ export interface Repositorio {
   limites(): Promise<Limites>;
   /** valor null tira o limite da categoria. */
   salvarLimite(categoria: string, valor: number | null): Promise<void>;
+  /** Valores já lançados de cada fixo (para a média). */
+  historicoFixos(): Promise<HistoricoFixos>;
+  saldoInicial(): Promise<{ mes: string; valor: number } | null>;
+  /** null apaga o saldo inicial. */
+  salvarSaldoInicial(s: { mes: string; valor: number } | null): Promise<void>;
 }
 
 const COLUNAS = "id, data, descricao, categoria, valor_centavos, tipo, meio, pagamento, cartao_id, compra_id, parcela, parcelas, data_compra, de_quem, reembolso_id, pagamento_informado_em, recorrente_id, recorrente_mes";
@@ -58,8 +63,8 @@ const paraLinha = (l: NovoLancamento) => ({
   ...(l.dono ? { dono: l.dono } : {}),
 });
 
-type LinhaFixo = { id: string; descricao: string; categoria: string; valor_centavos: number; tipo: Recorrente["tipo"]; meio: Recorrente["meio"]; pagamento: Recorrente["pagamento"]; cartao_id: string | null; dia: number; desde: string; ativo: boolean };
-const doFixo = (r: LinhaFixo): Recorrente => ({ id: r.id, descricao: r.descricao, categoria: r.categoria, valor: r.valor_centavos, tipo: r.tipo, meio: r.meio, pagamento: r.pagamento ?? null, cartaoId: r.cartao_id, dia: r.dia, desde: r.desde, ativo: r.ativo });
+type LinhaFixo = { id: string; descricao: string; categoria: string; valor_centavos: number; tipo: Recorrente["tipo"]; meio: Recorrente["meio"]; pagamento: Recorrente["pagamento"]; cartao_id: string | null; dia: number; desde: string; ativo: boolean; usar_media: boolean };
+const doFixo = (r: LinhaFixo): Recorrente => ({ id: r.id, descricao: r.descricao, categoria: r.categoria, valor: r.valor_centavos, tipo: r.tipo, meio: r.meio, pagamento: r.pagamento ?? null, cartaoId: r.cartao_id, dia: r.dia, desde: r.desde, ativo: r.ativo, usarMedia: r.usar_media });
 
 const COLUNAS_CARTAO = "id, banco, apelido, tem_credito, tem_debito, dia_fechamento, dia_vencimento, usado_por, dono";
 type LinhaCartao = { id: string; banco: string; apelido: string | null; tem_credito: boolean; tem_debito: boolean; dia_fechamento: number | null; dia_vencimento: number | null; usado_por: string | null; dono: string };
@@ -148,12 +153,12 @@ export const repositorioSupabase = (eu: string): Repositorio => ({
     return (data as LinhaCartao[]).map((r) => ({ ...doCartao(r), dono: r.dono }));
   },
   async recorrentes() {
-    const { data, error } = await supabase!.from("recorrentes").select("id, descricao, categoria, valor_centavos, tipo, meio, pagamento, cartao_id, dia, desde, ativo").eq("dono", eu).eq("ativo", true).order("dia");
+    const { data, error } = await supabase!.from("recorrentes").select("id, descricao, categoria, valor_centavos, tipo, meio, pagamento, cartao_id, dia, desde, ativo, usar_media").eq("dono", eu).eq("ativo", true).order("dia");
     if (error) throw new Error("Não foi possível carregar os lançamentos fixos.");
     return (data as LinhaFixo[]).map(doFixo);
   },
   async salvarRecorrente(r) {
-    const linha = { descricao: r.descricao, categoria: r.categoria, valor_centavos: r.valor, tipo: r.tipo, meio: r.meio, pagamento: r.pagamento ?? null, cartao_id: r.pagamento ? r.cartaoId : null, dia: r.dia, desde: r.desde, ativo: r.ativo };
+    const linha = { descricao: r.descricao, categoria: r.categoria, valor_centavos: r.valor, tipo: r.tipo, meio: r.meio, pagamento: r.pagamento ?? null, cartao_id: r.pagamento ? r.cartaoId : null, dia: r.dia, desde: r.desde, ativo: r.ativo, usar_media: r.usarMedia ?? false };
     const { data, error } = r.id
       ? await supabase!.from("recorrentes").update(linha).eq("id", r.id).select("id").single()
       : await supabase!.from("recorrentes").insert(linha).select("id").single();
@@ -180,6 +185,24 @@ export const repositorioSupabase = (eu: string): Repositorio => ({
       : await supabase!.from("limites").upsert({ categoria, valor_centavos: valor }, { onConflict: "dono,categoria" });
     if (error) throw new Error("Não foi possível salvar o limite.");
   },
+  async historicoFixos() {
+    const { data, error } = await supabase!.from("lancamentos").select("recorrente_id, recorrente_mes, valor_centavos").eq("dono", eu).not("recorrente_id", "is", null).order("recorrente_mes", { ascending: false }).limit(500);
+    if (error) throw new Error("Não foi possível carregar o histórico dos fixos.");
+    const h: HistoricoFixos = {};
+    for (const r of data as { recorrente_id: string; recorrente_mes: string; valor_centavos: number }[]) (h[r.recorrente_id] ??= []).push({ mes: r.recorrente_mes, valor: r.valor_centavos });
+    return h;
+  },
+  async saldoInicial() {
+    const { data, error } = await supabase!.from("saldos_iniciais").select("mes, valor_centavos").eq("dono", eu).maybeSingle();
+    if (error) throw new Error("Não foi possível carregar o saldo inicial.");
+    return data ? { mes: (data as { mes: string }).mes, valor: (data as { valor_centavos: number }).valor_centavos } : null;
+  },
+  async salvarSaldoInicial(s) {
+    const { error } = s === null
+      ? await supabase!.from("saldos_iniciais").delete().eq("dono", eu)
+      : await supabase!.from("saldos_iniciais").upsert({ mes: s.mes, valor_centavos: s.valor }, { onConflict: "dono" });
+    if (error) throw new Error("Não foi possível salvar o saldo inicial.");
+  },
 });
 
 export const daLinhaLancamento = daLinha;
@@ -192,7 +215,9 @@ export function repositorioDemo(
   queUso: Cartao[] = [],
   fixosIniciais: Recorrente[] = [],
   limitesIniciais: Limites = {},
+  saldoIni: { mes: string; valor: number } | null = null,
 ): Repositorio {
+  let saldo = saldoIni;
   let fixos = [...fixosIniciais];
   let limites = { ...limitesIniciais };
   let lista = [...inicial];
@@ -282,6 +307,17 @@ export function repositorioDemo(
     async salvarLimite(categoria, valor) {
       if (valor === null) delete limites[categoria];
       else limites[categoria] = valor;
+    },
+    async historicoFixos() {
+      const h: HistoricoFixos = {};
+      for (const l of lista) if (l.recorrenteId && l.recorrenteMes) (h[l.recorrenteId] ??= []).push({ mes: l.recorrenteMes, valor: l.valor });
+      return h;
+    },
+    async saldoInicial() {
+      return saldo;
+    },
+    async salvarSaldoInicial(s) {
+      saldo = s;
     },
   };
 }

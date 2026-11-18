@@ -8,8 +8,9 @@ import { podeGerenciarCasa, type Perfil } from "./tipos";
 import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, nomeEmprestado, vencimentoDaCompra, type Cartao } from "./cartoes";
 import { Folha, Segmento } from "./Folha";
 import { CartaoDetalhe } from "./CartaoDetalhe";
-import { lancamentoDoFixo, pendentesDoMes, situacaoLimites, type Limites, type Recorrente } from "./fixos";
+import { lancamentoDoFixo, pendentesDoMes, saldoAcumulado, situacaoLimites, valorSugerido, type HistoricoFixos, type Limites, type Recorrente } from "./fixos";
 import { gastosPorCategoria } from "./resumo";
+import { comCor, corBanco, corCategoria } from "./cores";
 
 type ParaCasa = Forma | "nao";
 type Como = "dinheiro" | "debito" | "credito" | "beneficio";
@@ -29,10 +30,13 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const [editando, setEditando] = useState<NovoLancamento | null>(null);
   const [novoCartao, setNovoCartao] = useState(false);
   const [vendoCartao, setVendoCartao] = useState<Cartao | null>(null);
+  const [mesCartao, setMesCartao] = useState<string | null>(null);
   const [todosCartoes, setTodosCartoes] = useState(false);
   const [fixos, setFixos] = useState<Recorrente[]>([]);
   const [lancados, setLancados] = useState<string[]>([]);
   const [limites, setLimites] = useState<Limites>({});
+  const [historico, setHistorico] = useState<HistoricoFixos>({});
+  const [acumulado, setAcumulado] = useState<{ valor: number; inicial: { mes: string; valor: number } | null } | null>(null);
   const [versao, setVersao] = useState(0); // recarrega a tela do cartão depois de editar
   const [abertos, setAbertos] = useState<string[]>([]); // pendências abertas
   const [aReceber, setAReceber] = useState<Lancamento[]>([]);
@@ -48,6 +52,10 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         repo.listar(mes), repo.cartoes(), repo.aReceber(), repo.devo(), repo.cartoesQueUso(), repo.recorrentes(), repo.fixosLancados(mes), repo.limites(),
       ]);
       setFixos(fx);
+      const [hf, si] = await Promise.all([repo.historicoFixos(), repo.saldoInicial()]);
+      setHistorico(hf);
+      const tudo = await repo.listarIntervalo(si?.mes ?? "2000-01", mes);
+      setAcumulado({ valor: saldoAcumulado(tudo, si, mes), inicial: si });
       setLancados(fl);
       setLimites(lm);
       setLista(l);
@@ -99,7 +107,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const alertas = useMemo(() => situacaoLimites(limites, gastosPorCategoria(lista ?? [], mes)).filter((x) => x.estado !== "ok"), [limites, lista, mes]);
   const lancarFixos = async (rs: Recorrente[]) => {
     try {
-      for (const f of rs) await repo.salvar(lancamentoDoFixo(f, mes, cartoes.find((c) => c.id === f.cartaoId)));
+      for (const f of rs) await repo.salvar(lancamentoDoFixo(f, mes, cartoes.find((c) => c.id === f.cartaoId), valorSugerido(f, historico, mes).valor));
       setAviso(rs.length > 1 ? `${rs.length} fixos lançados` : `${rs[0].descricao} lançado`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao lançar.");
@@ -119,7 +127,8 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   return (
     <>
       {vendoCartao ? (
-        <CartaoDetalhe key={`${vendoCartao.id}-${versao}`} repo={repo} cartao={vendoCartao} mesInicial={mes} nomeDe={nomeDe} voltar={() => setVendoCartao(null)} abrir={setEditando} />
+        <CartaoDetalhe key={`${vendoCartao.id}-${versao}`} repo={repo} cartao={vendoCartao} cartoes={cartoes} trocar={(c, m) => { setMesCartao(m); setVendoCartao(c); }}
+          mesInicial={mesCartao ?? mes} nomeDe={nomeDe} voltar={() => { setVendoCartao(null); setMesCartao(null); }} abrir={setEditando} />
       ) : (
       <>
       <div className="mes" role="group" aria-label="Mês">
@@ -136,6 +145,16 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           <div><span className="mini">Saiu</span><b>{reais(r.saiu)}</b></div>
         </div>
         {r.noCredito > 0 && <span className="mini">Inclui {reais(r.noCredito)} de faturas de cartão que vencem neste mês</span>}
+        {acumulado && (
+          <div className="acumulado">
+            <div><span className="mini">Saldo acumulado até {nomeMes(mes).split(" ")[0].toLowerCase()}</span><b>{reais(acumulado.valor)}</b></div>
+            <span className="mini">
+              {acumulado.inicial
+                ? `Saldo inicial de ${reais(acumulado.inicial.valor)} em ${nomeMes(acumulado.inicial.mes).toLowerCase()} + as sobras de cada mês.`
+                : "Soma das sobras de todos os meses. Informe seu saldo inicial em Ajustes para bater com o banco."}
+            </span>
+          </div>
+        )}
       </section>
 
       {temBeneficio && (
@@ -155,7 +174,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           <ul className="lista">
             {alertas.map((a) => (
               <li key={a.categoria}>
-                <span className={`selo ${a.estado}`} aria-hidden="true">{a.estado === "passou" ? "!" : "⚠"}</span>
+                <span className={`estado-icone ${a.estado}`} aria-hidden="true">{a.estado === "passou" ? "!" : "⚠"}</span>
                 <span className="texto">
                   <b>{a.categoria}</b>
                   <span>{a.estado === "passou" ? `Passou ${reais(a.gasto - a.limite)} do limite` : `Perto do limite: ${Math.round(a.parte * 100)}% usado`}</span>
@@ -176,15 +195,16 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           <ul className="lista">
             {pendentes.map((f) => {
               const c = cartoes.find((x) => x.id === f.cartaoId);
+              const sug = valorSugerido(f, historico, mes);
               return (
                 <li key={f.id}>
-                  <button className="item" onClick={() => setEditando(lancamentoDoFixo(f, mes, c))}>
-                    <span className={`icone ${f.tipo} ${f.meio}`} aria-hidden="true">{f.categoria.slice(0, 2)}</span>
+                  <button className="item" onClick={() => setEditando(lancamentoDoFixo(f, mes, c, sug.valor))}>
+                    <span className={`icone ${f.tipo} ${f.meio}${f.tipo === "saida" && f.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(f.categoria))} aria-hidden="true">{f.categoria.slice(0, 2)}</span>
                     <span className="texto">
                       <b>{f.descricao}</b>
-                      <span>dia {f.dia}{f.pagamento ? ` · ${c ? c.banco : ""} ${f.pagamento === "credito" ? "crédito" : "débito"}` : f.meio === "beneficio" ? " · VR/VA" : ""}</span>
+                      <span>dia {f.dia}{sug.media ? ` · média de ${sug.meses} ${sug.meses === 1 ? "mês" : "meses"}` : ""}{f.pagamento ? ` · ${c ? c.banco : ""} ${f.pagamento === "credito" ? "crédito" : "débito"}` : f.meio === "beneficio" ? " · VR/VA" : ""}</span>
                     </span>
-                    <span className={`valor ${f.tipo}`}>{f.tipo === "entrada" ? "+" : "−"}{reais(f.valor)}</span>
+                    <span className={`valor ${f.tipo}`}>{f.tipo === "entrada" ? "+" : "−"}{reais(sug.valor)}</span>
                   </button>
                   <button className="btn pequeno fantasma" onClick={() => lancarFixos([f])}>Lançar</button>
                 </li>
@@ -264,7 +284,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
                 <li key={c.id}>
                   {meu ? (
                     <button className="item" onClick={() => setVendoCartao(c)} aria-label={`Ver ${nomeCartao(c)}`}>
-                      <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
+                      <span className="icone cartao com-cor" style={comCor(corBanco(c.banco))} aria-hidden="true">{c.banco.slice(0, 2)}</span>
                       <span className="texto">
                         <b>{nomeCartao(c)}</b>
                         <span>{c.temCredito ? (f ? `vence ${dataCurta(f.data)}` : `vence dia ${c.diaVencimento}`) : "só débito"}</span>
@@ -274,7 +294,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
                     </button>
                   ) : (
                     <>
-                      <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
+                      <span className="icone cartao com-cor" style={comCor(corBanco(c.banco))} aria-hidden="true">{c.banco.slice(0, 2)}</span>
                       <span className="texto">
                         <b>{nomeEmprestado(c, nomeDe(c.dono))}</b>
                         <span>emprestado{aPagar ? ` · você deve ${reais(aPagar)}` : ""}</span>
@@ -319,7 +339,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
             return (
               <li key={l.id}>
                 <button className="item" onClick={() => setEditando(l)}>
-                  <span className={`icone ${l.tipo} ${l.meio}`} aria-hidden="true">{l.categoria.slice(0, 2)}</span>
+                  <span className={`icone ${l.tipo} ${l.meio}${l.tipo === "saida" && l.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(l.categoria))} aria-hidden="true">{l.categoria.slice(0, 2)}</span>
                   <span className="texto">
                     <b>{l.descricao}</b>
                     <span>{l.categoria} · {dataCurta(l.data)}{extra.length ? ` · ${extra.join(" · ")}` : ""}</span>

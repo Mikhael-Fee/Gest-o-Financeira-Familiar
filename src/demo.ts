@@ -107,7 +107,19 @@ export function historicoDemo(perfilId: string, hoje = new Date()): Lancamento[]
           pagamento: "credito", cartaoId: "demo-nubank", compraId: "demo-compra-notebook", parcela: 7 + j, parcelas: 10, dataCompra: null,
         });
   });
+  // Hora extra do Filho varia todo mês (o fixo dele sugere a média).
+  if (perfilId === "demo-filho") {
+    [38000, 45000, 29000, 52000, 41000].forEach((v, k) => {
+      const m = somarMes(mes, -(k + 1));
+      saida.push({ id: `${perfilId}-extra-${k}`, data: `${m}-20`, descricao: "Hora extra", categoria: "Extra", valor: v, tipo: "entrada", meio: "dinheiro", recorrenteId: "demo-fixo-extra", recorrenteMes: m });
+    });
+  }
   return saida;
+}
+
+/** Saldo que o Filho tinha quando começou a usar o app (5 meses atrás). */
+export function saldoInicialDemo(perfilId: string, hoje = new Date()) {
+  return perfilId === "demo-filho" ? { mes: somarMes(mesDe(hojeISO(hoje)), -5), valor: 120000 } : null;
 }
 
 const FIXOS_LANCADOS: Record<string, string> = { "Salário": "demo-fixo-salario", "Academia": "demo-fixo-academia" };
@@ -119,6 +131,7 @@ export function fixosDemo(perfilId: string, hoje = new Date()): Recorrente[] {
   const base = { meio: "dinheiro" as const, ativo: true, desde, pagamento: null, cartaoId: null };
   return [
     { ...base, id: "demo-fixo-salario", descricao: "Salário", categoria: "Salário", valor: 320000, tipo: "entrada", dia: 5 },
+    { ...base, id: "demo-fixo-extra", descricao: "Hora extra", categoria: "Extra", valor: 40000, tipo: "entrada", dia: 20, usarMedia: true, desde: somarMes(desde, -5) },
     { ...base, id: "demo-fixo-academia", descricao: "Academia", categoria: "Saúde", valor: 9900, tipo: "saida", dia: 12 },
     { ...base, id: "demo-fixo-streaming", descricao: "Streaming", categoria: "Lazer", valor: 5590, tipo: "saida", dia: 15, pagamento: "credito", cartaoId: "demo-nubank" },
     { ...base, id: "demo-fixo-celular", descricao: "Plano do celular", categoria: "Outros", valor: 4990, tipo: "saida", dia: 20 },

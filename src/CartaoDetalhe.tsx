@@ -5,14 +5,18 @@ import type { Repositorio } from "./repositorio";
 import { nomeCartao, type Cartao } from "./cartoes";
 import { faturasDoCartao, parcelamentosAbertos } from "./resumo";
 import { Colunas, mesCurto } from "./Resumo";
+import { comCor, corBanco, corCategoria } from "./cores";
 
 const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const mesSo = (m: string) => nomeMes(m).split(" ")[0].toLowerCase();
 
 /** Tudo de um cartão: fatura do mês escolhido, faturas ao longo dos meses e parcelamentos que faltam. */
-export function CartaoDetalhe({ repo, cartao, mesInicial, nomeDe, voltar, abrir }: {
+export function CartaoDetalhe({ repo, cartao, cartoes, trocar, mesInicial, nomeDe, voltar, abrir }: {
   repo: Repositorio;
   cartao: Cartao;
+  /** Todos os seus cartões, para passar de um para outro com as setas. */
+  cartoes: Cartao[];
+  trocar: (c: Cartao, mes: string) => void;
   mesInicial: string;
   nomeDe: (id?: string | null) => string;
   voltar: () => void;
@@ -34,6 +38,9 @@ export function CartaoDetalhe({ repo, cartao, mesInicial, nomeDe, voltar, abrir 
   }, [repo, cartao.id, inicio, mesInicial]);
 
   const l = lista ?? [];
+  const posicao = Math.max(0, cartoes.findIndex((c) => c.id === cartao.id));
+  const anterior = cartoes[(posicao - 1 + cartoes.length) % cartoes.length] ?? cartao;
+  const proximo = cartoes[(posicao + 1) % cartoes.length] ?? cartao;
   const faturas = useMemo(() => faturasDoCartao(l, cartao.id, inicio, N), [l, cartao.id, inicio]);
   const doMes = l.filter((x) => mesDe(x.data) === mes);
   const credito = doMes.filter((x) => x.pagamento === "credito");
@@ -48,15 +55,18 @@ export function CartaoDetalhe({ repo, cartao, mesInicial, nomeDe, voltar, abrir 
     <>
       <div className="voltar-linha">
         <button className="btn fantasma pequeno" onClick={voltar}>‹ Voltar</button>
+        {cartoes.length > 1 && <span className="nota">{posicao + 1} de {cartoes.length}</span>}
       </div>
       <header className="cartao-topo">
-        <span className="icone cartao grande" aria-hidden="true">{cartao.banco.slice(0, 2)}</span>
+        {cartoes.length > 1 && <button className="seta troca" aria-label={`Cartão anterior: ${nomeCartao(anterior)}`} onClick={() => trocar(anterior, mes)}>‹</button>}
+        <span className="icone cartao grande com-cor" style={comCor(corBanco(cartao.banco))} aria-hidden="true">{cartao.banco.slice(0, 2)}</span>
         <div>
           <h1 className="titulo-pagina">{nomeCartao(cartao)}</h1>
           <span className="nota">
             {[cartao.temCredito && cartao.temDebito ? "Flex" : cartao.temCredito ? "Crédito" : "Débito", cartao.temCredito && `fecha dia ${cartao.diaFechamento}, vence dia ${cartao.diaVencimento}`, cartao.usadoPor && `usado por ${nomeDe(cartao.usadoPor)}`].filter(Boolean).join(" · ")}
           </span>
         </div>
+        {cartoes.length > 1 && <button className="seta troca" aria-label={`Próximo cartão: ${nomeCartao(proximo)}`} onClick={() => trocar(proximo, mes)}>›</button>}
       </header>
 
       <div className="mes" role="group" aria-label="Mês">
@@ -80,7 +90,7 @@ export function CartaoDetalhe({ repo, cartao, mesInicial, nomeDe, voltar, abrir 
       {lista && cartao.temCredito && (
         <section className="painel">
           <div className="cabeca"><h2>Faturas mês a mês</h2><span className="nota">Toque num mês</span></div>
-          <Colunas pontos={faturas} rotulo={`Faturas do ${cartao.banco} por mês`} destacar={mes} aoTocar={setMes} />
+          <Colunas pontos={faturas} rotulo={`Faturas do ${cartao.banco} por mês`} destacar={mes} aoTocar={setMes} cor={corBanco(cartao.banco)} />
           <p className="nota">Os meses depois de {mesCurto(mesInicial)} mostram as parcelas já lançadas.</p>
         </section>
       )}
@@ -93,6 +103,7 @@ export function CartaoDetalhe({ repo, cartao, mesInicial, nomeDe, voltar, abrir 
             {credito.map((x) => (
               <li key={x.id}>
                 <button className="item" onClick={() => abrir(x)}>
+                  <span className="icone com-cor" style={comCor(corCategoria(x.categoria))} aria-hidden="true">{x.categoria.slice(0, 2)}</span>
                   <span className="texto">
                     <b>{x.descricao}</b>
                     <span>{x.categoria}{x.dataCompra ? ` · comprou ${dataCurta(x.dataCompra)}` : ""}{x.parcelas && x.parcelas > 1 ? ` · ${x.parcela}/${x.parcelas}` : ""}{x.deQuem ? ` · de ${nomeDe(x.deQuem)}` : ""}</span>
