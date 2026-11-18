@@ -7,6 +7,7 @@ import type { Forma } from "./casa";
 import { podeGerenciarCasa, type Perfil } from "./tipos";
 import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, nomeEmprestado, vencimentoDaCompra, type Cartao } from "./cartoes";
 import { Folha, Segmento } from "./Folha";
+import { CartaoDetalhe } from "./CartaoDetalhe";
 
 type ParaCasa = Forma | "nao";
 type Como = "dinheiro" | "debito" | "credito" | "beneficio";
@@ -25,6 +26,9 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const [erro, setErro] = useState("");
   const [editando, setEditando] = useState<NovoLancamento | null>(null);
   const [novoCartao, setNovoCartao] = useState(false);
+  const [vendoCartao, setVendoCartao] = useState<Cartao | null>(null);
+  const [todosCartoes, setTodosCartoes] = useState(false);
+  const [versao, setVersao] = useState(0); // recarrega a tela do cartão depois de editar
   const [abertos, setAbertos] = useState<string[]>([]); // pendências abertas
   const [aReceber, setAReceber] = useState<Lancamento[]>([]);
   const [devo, setDevo] = useState<(Lancamento & { dono: string })[]>([]);
@@ -39,6 +43,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
       setLista(l);
       setCartoes(c);
       setQueUso(qu);
+      setVersao((v) => v + 1);
       setAReceber(ar);
       setDevo(dv);
     } catch (e) {
@@ -81,7 +86,8 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const devoPorPessoa = agrupar(devo, (l) => l.dono);
   const pendencias = receberPorPessoa.length + devoPorPessoa.length;
   // Só os cartões com fatura no mês e os de outra pessoa que você usa (para lançar compra).
-  const cartoesCredito = [...cartoes.filter((c) => faturas.has(c.id)), ...queUso.filter((c) => c.temCredito)];
+  const cartoesCredito = [...cartoes.filter((c) => todosCartoes || faturas.has(c.id)), ...queUso.filter((c) => c.temCredito)];
+  const escondidos = cartoes.filter((c) => !faturas.has(c.id)).length;
 
   const novo = (cartao?: Cartao) =>
     setEditando({
@@ -91,6 +97,10 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
 
   return (
     <>
+      {vendoCartao ? (
+        <CartaoDetalhe key={`${vendoCartao.id}-${versao}`} repo={repo} cartao={vendoCartao} mesInicial={mes} nomeDe={nomeDe} voltar={() => setVendoCartao(null)} abrir={setEditando} />
+      ) : (
+      <>
       <div className="mes" role="group" aria-label="Mês">
         <button className="seta" aria-label="Mês anterior" onClick={() => setMes(somarMes(mes, -1))}>‹</button>
         <span>{nomeMes(mes)}</span>
@@ -175,7 +185,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         </section>
       )}
 
-      {cartoesCredito.length > 0 && (
+      {(cartoesCredito.length > 0 || escondidos > 0) && (
         <section className="painel">
           <h2>Cartões em {nomeMes(mes).split(" ")[0].toLowerCase()}</h2>
           <ul className="lista">
@@ -185,16 +195,35 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
               const aPagar = meu ? 0 : devo.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
               return (
                 <li key={c.id}>
-                  <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
-                  <span className="texto">
-                    <b>{meu ? nomeCartao(c) : nomeEmprestado(c, nomeDe(c.dono))}</b>
-                    <span>{meu ? (f ? `vence ${dataCurta(f.data)}` : `vence dia ${c.diaVencimento}`) : `emprestado${aPagar ? ` · você deve ${reais(aPagar)}` : ""}`}</span>
-                  </span>
-                  {meu ? <b className="valor">{reais(f?.total ?? 0)}</b> : <button className="btn pequeno" onClick={() => novo(c)}>+ Compra</button>}
+                  {meu ? (
+                    <button className="item" onClick={() => setVendoCartao(c)} aria-label={`Ver ${nomeCartao(c)}`}>
+                      <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
+                      <span className="texto">
+                        <b>{nomeCartao(c)}</b>
+                        <span>{c.temCredito ? (f ? `vence ${dataCurta(f.data)}` : `vence dia ${c.diaVencimento}`) : "só débito"}</span>
+                      </span>
+                      <span className="valor">{c.temCredito ? reais(f?.total ?? 0) : ""}</span>
+                      <span className="seta-item" aria-hidden="true">›</span>
+                    </button>
+                  ) : (
+                    <>
+                      <span className="icone cartao" aria-hidden="true">{c.banco.slice(0, 2)}</span>
+                      <span className="texto">
+                        <b>{nomeEmprestado(c, nomeDe(c.dono))}</b>
+                        <span>emprestado{aPagar ? ` · você deve ${reais(aPagar)}` : ""}</span>
+                      </span>
+                      <button className="btn pequeno" onClick={() => novo(c)}>+ Compra</button>
+                    </>
+                  )}
                 </li>
               );
             })}
           </ul>
+          {escondidos > 0 && (
+            <button className="link ver-todos" onClick={() => setTodosCartoes(!todosCartoes)}>
+              {todosCartoes ? "Mostrar só os com fatura" : `Ver todos os cartões (${escondidos} sem fatura no mês)`}
+            </button>
+          )}
         </section>
       )}
 
@@ -235,6 +264,9 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           })}
         </ul>
       </section>
+
+      </>
+      )}
 
       {editando && (
         <Formulario

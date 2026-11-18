@@ -6,8 +6,8 @@ import type { RepositorioCasa } from "./repositorioCasa";
 import type { Despesa } from "./casa";
 import { compromissos, gastosPorCategoria, maioresGastos, sobraPorMes } from "./resumo";
 
-const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-const mesCurto = (m: string) => MESES_CURTOS[Number(m.slice(5, 7)) - 1];
+export const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+export const mesCurto = (m: string) => MESES_CURTOS[Number(m.slice(5, 7)) - 1];
 const mesSo = (m: string) => nomeMes(m).split(" ")[0].toLowerCase();
 const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 /** Valor curto para rótulos de gráfico: R$ 860 · R$ 1,3 mil. */
@@ -149,23 +149,26 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
 }
 
 /** Colunas simples com o valor em cima: positivo sobe, negativo desce da linha do zero. */
-function Colunas({ pontos, rotulo, destacar }: { pontos: { mes: string; valor: number }[]; rotulo: string; destacar?: string }) {
+export function Colunas({ pontos, rotulo, destacar, aoTocar }: { pontos: { mes: string; valor: number }[]; rotulo: string; destacar?: string; aoTocar?: (mes: string) => void }) {
   const max = Math.max(1, ...pontos.map((p) => Math.abs(p.valor)));
   const temNegativo = pontos.some((p) => p.valor < 0);
+  // Com muitas colunas os valores não cabem: mostra só o do mês destacado.
+  const rotular = (m: string) => pontos.length <= 6 || m === destacar;
   return (
     <figure className="colunas" aria-label={rotulo}>
       <div className={`colunas-area${temNegativo ? " com-negativo" : ""}`}>
         {pontos.map((p) => (
-          <div key={p.mes} className={`coluna${p.mes === destacar ? " atual" : ""}`} title={`${nomeMes(p.mes)}: ${reais(p.valor)}`}>
+          <div key={p.mes} className={`coluna${p.mes === destacar ? " atual" : ""}${aoTocar ? " tocavel" : ""}`} title={`${nomeMes(p.mes)}: ${reais(p.valor)}`}
+            {...(aoTocar ? { role: "button", tabIndex: 0, "aria-label": `${nomeMes(p.mes)}: ${reais(p.valor)}`, "aria-pressed": p.mes === destacar, onClick: () => aoTocar(p.mes), onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && aoTocar(p.mes) } : {})}>
             <div className="metade cima">
-              {p.valor > 0 && <span className="rotulo-col">{curto(p.valor)}</span>}
+              {p.valor > 0 && rotular(p.mes) && <span className="rotulo-col">{curto(p.valor)}</span>}
               {p.valor > 0 && <span className="pilar" style={{ height: `${(p.valor / max) * 100}%` }} />}
               {p.valor === 0 && <span className="rotulo-col zero">—</span>}
             </div>
             {temNegativo && (
               <div className="metade baixo">
                 {p.valor < 0 && <span className="pilar negativo" style={{ height: `${(-p.valor / max) * 100}%` }} />}
-                {p.valor < 0 && <span className="rotulo-col">{curto(p.valor)}</span>}
+                {p.valor < 0 && rotular(p.mes) && <span className="rotulo-col">{curto(p.valor)}</span>}
               </div>
             )}
             <span className="mes-col">{mesCurto(p.mes)}</span>

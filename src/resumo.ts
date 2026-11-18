@@ -46,3 +46,38 @@ export function compromissos(lista: Lancamento[], mes: string, n = 6): Compromis
     return { mes: m, valor: itens.reduce((s, l) => s + l.valor, 0), itens };
   });
 }
+
+/** Faturas de um cartão mês a mês (compras no crédito pela data da fatura). */
+export function faturasDoCartao(lista: Lancamento[], cartaoId: string, deMes: string, n: number): Ponto[] {
+  return Array.from({ length: n }, (_, i) => {
+    const m = somarMes(deMes, i);
+    const valor = lista
+      .filter((l) => l.cartaoId === cartaoId && l.pagamento === "credito" && l.tipo === "saida" && mesDe(l.data) === m)
+      .reduce((s, l) => s + l.valor, 0);
+    return { mes: m, valor };
+  });
+}
+
+export type Parcelamento = {
+  compraId: string; descricao: string; valorParcela: number; parcelas: number;
+  proxima: number; restantes: number; totalRestante: number; ultimaFatura: string; deQuem: string | null;
+};
+
+/** Compras parceladas no cartão que ainda têm parcelas a partir de `mes`. */
+export function parcelamentosAbertos(lista: Lancamento[], cartaoId: string, mes: string): Parcelamento[] {
+  const grupos = new Map<string, Lancamento[]>();
+  for (const l of lista) {
+    if (l.cartaoId !== cartaoId || !l.compraId || (l.parcelas ?? 1) < 2 || mesDe(l.data) < mes) continue;
+    grupos.set(l.compraId, [...(grupos.get(l.compraId) ?? []), l]);
+  }
+  return [...grupos.entries()]
+    .map(([compraId, ls]) => {
+      const ord = [...ls].sort((a, b) => a.data.localeCompare(b.data));
+      return {
+        compraId, descricao: ord[0].descricao, valorParcela: ord[0].valor, parcelas: ord[0].parcelas!,
+        proxima: ord[0].parcela!, restantes: ord.length, totalRestante: ord.reduce((s, l) => s + l.valor, 0),
+        ultimaFatura: ord[ord.length - 1].data, deQuem: ord[0].deQuem ?? null,
+      };
+    })
+    .sort((a, b) => b.totalRestante - a.totalRestante);
+}

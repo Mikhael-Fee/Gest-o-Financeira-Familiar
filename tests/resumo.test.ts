@@ -40,3 +40,22 @@ describe("resumo", () => {
     expect(compromissos(lista, "2026-11", 3).map((c) => c.valor)).toEqual([8600, 8600, 0]);
   });
 });
+
+describe("tela do cartão", () => {
+  const nb = (data: string, parcela: number): Lancamento => ({
+    id: `nb${parcela}`, data, descricao: "Notebook", categoria: "Compras", valor: 86000, tipo: "saida", meio: "dinheiro",
+    pagamento: "credito", cartaoId: "nu", compraId: "c1", parcela, parcelas: 10,
+  });
+  const itens = [nb("2026-10-10", 6), nb("2026-11-10", 7), nb("2026-12-10", 8), nb("2027-01-10", 9), nb("2027-02-10", 10),
+    { id: "x", data: "2026-11-03", descricao: "Uber", categoria: "Transporte", valor: 2000, tipo: "saida" as const, meio: "dinheiro" as const, pagamento: "credito" as const, cartaoId: "inter" }];
+  it("faturas por mês só do cartão escolhido", async () => {
+    const { faturasDoCartao } = await import("../src/resumo");
+    expect(faturasDoCartao(itens, "nu", "2026-10", 6).map((p) => p.valor)).toEqual([86000, 86000, 86000, 86000, 86000, 0]);
+  });
+  it("parcelamento mostra a próxima parcela e quanto falta", async () => {
+    const { parcelamentosAbertos } = await import("../src/resumo");
+    expect(parcelamentosAbertos(itens, "nu", "2026-12")).toEqual([
+      { compraId: "c1", descricao: "Notebook", valorParcela: 86000, parcelas: 10, proxima: 8, restantes: 3, totalRestante: 258000, ultimaFatura: "2027-02-10", deQuem: null },
+    ]);
+  });
+});
