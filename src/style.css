@@ -80,3 +80,41 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .abas button svg { width: 22px; height: 22px; }
 .abas button[aria-current="page"] { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Etapa 2: Minhas finanças */
+.mes { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-radius: 14px; padding: 4px; font-weight: 700; }
+.seta { border: 0; background: none; color: var(--fg); font-size: 26px; line-height: 1; width: 44px; height: 40px; border-radius: 10px; cursor: pointer; }
+.seta:hover { background: var(--surface-2); }
+.valor-grande { font-family: var(--display); font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.duas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.duas > div, .tres > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.duas b, .tres b { font-variant-numeric: tabular-nums; font-size: 16px; }
+.mini { font-size: 12px; opacity: .85; }
+.painel .mini { color: var(--muted); opacity: 1; }
+.cabeca { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.beneficio { border: 1px solid var(--benefit-soft); }
+.beneficio h2 { color: var(--benefit); }
+.vazio { padding: 8px 0; display: flex; flex-direction: column; gap: 2px; }
+.item { width: 100%; display: flex; align-items: center; gap: 12px; border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 0; cursor: pointer; }
+.lista li:has(.item) { padding-block: 10px; }
+.icone { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: var(--surface-2); color: var(--muted); }
+.icone.entrada { background: var(--accent-soft); color: var(--accent); }
+.icone.beneficio { background: var(--benefit-soft); color: var(--benefit); }
+.texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.texto b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.texto span { font-size: 12px; color: var(--muted); }
+.valor { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.valor.entrada { color: var(--accent); }
+
+.fundo-folha { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; }
+.folha { background: var(--surface); width: 100%; max-width: 460px; max-height: 92%; overflow: auto; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; gap: 12px;
+  padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.segmento { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.segmento button { border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; padding: 10px; font: 700 14px var(--body); cursor: pointer; }
+.segmento button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.campo select { font: 500 16px var(--body); padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; }
+.btn.perigo { background: var(--bad); color: #fff; }
+.link-perigo { border: 0; background: none; color: var(--bad); font: 700 14px var(--body); padding: 6px; cursor: pointer; }
+.confirmar { display: flex; flex-direction: column; gap: 10px; font-weight: 600; }
+.aviso { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: 14px; }
