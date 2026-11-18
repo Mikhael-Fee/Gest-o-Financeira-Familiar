@@ -11,7 +11,8 @@ type Aberto =
   | { tipo: "entrada" }
   | { tipo: "despesa"; despesa?: Despesa }
   | { tipo: "combinado"; filho: Perfil; atual: Combinado | null }
-  | { tipo: "pendente"; ajuda: Ajuda };
+  | { tipo: "pendente"; ajuda: Ajuda }
+  | { tipo: "confirmada"; ajuda: Ajuda };
 
 const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const centavosParaTexto = (c: number | null | undefined) => (c ? (c / 100).toFixed(2).replace(".", ",") : "");
@@ -183,7 +184,10 @@ export function Casa({ repo, eu, familia }: { repo: RepositorioCasa; eu: Perfil;
                     <b>{nome(a.quem)} · {a.descricao}</b>
                     <span>{a.forma === "pago_direto" ? "Pagou direto" : "Enviou"} · {a.meio === "beneficio" ? "VR/VA" : "dinheiro"} · {dataCurta(a.data)}</span>
                   </span>
-                  <span className="fim"><b className="valor entrada">{reais(a.valor)}</b></span>
+                  <span className="fim">
+                    <b className="valor entrada">{reais(a.valor)}</b>
+                    {gerencia && <button className="link" onClick={() => setAberto({ tipo: "confirmada", ajuda: a })}>Corrigir</button>}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -201,6 +205,16 @@ export function Casa({ repo, eu, familia }: { repo: RepositorioCasa; eu: Perfil;
           textoApagar="Apagar esta ajuda" apagar={() => feito("Ajuda apagada", () => repo.apagarAjuda(aberto.ajuda))}>
           <p>{aberto.ajuda.descricao} · {reais(aberto.ajuda.valor)}</p>
           <p className="nota">Enquanto seus pais não confirmam, você pode apagar e informar de novo com o valor certo.</p>
+        </Folha>
+      )}
+      {aberto?.tipo === "confirmada" && (
+        <Folha titulo="Entrada confirmada" fechar={() => setAberto(null)} textoSalvar="Fechar" salvar={async () => setAberto(null)}
+          textoApagar="Apagar esta entrada" apagar={() => feito("Entrada apagada", () => repo.apagarAjuda(aberto.ajuda))}>
+          <p>{nome(aberto.ajuda.quem)} · {aberto.ajuda.descricao} · {reais(aberto.ajuda.valor)} · {dataCurta(aberto.ajuda.data)}</p>
+          <p className="nota">
+            Lançou errado? Apague e lance de novo com o valor certo.
+            {aberto.ajuda.forma === "pago_direto" ? " Como foi uma despesa paga direto, a despesa da Casa também é apagada." : ""}
+          </p>
         </Folha>
       )}
       {aberto?.tipo === "entrada" && (
