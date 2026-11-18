@@ -17,6 +17,7 @@ export type Lancamento = {
   dataCompra?: string | null;
   deQuem?: string | null; // compra feita por outra pessoa da família no seu cartão
   reembolsoId?: string | null; // preenchido quando você recebeu de volta
+  pagamentoInformadoEm?: string | null; // quem comprou avisou que já pagou
 };
 
 export type Pagamento = "debito" | "credito";

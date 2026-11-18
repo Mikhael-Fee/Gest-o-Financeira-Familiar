@@ -160,3 +160,6 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .segmento button { font-size: 13px; padding: 10px 4px; }
 .marcar-item { cursor: pointer; }
 .marcar-item input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+
+/* Aviso de que a pessoa já pagou: chama atenção para confirmar. */
+.texto .destaque-texto { color: var(--accent); font-weight: 600; }

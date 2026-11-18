@@ -55,10 +55,15 @@ function comprasDaMaeNoCartaoDoFilho(mes: string): Lancamento[] {
   ];
 }
 
+/** Na visão do Filho, a Mãe já avisou que pagou a farmácia. */
+function comAvisoDePagamento(l: Lancamento, mes: string): Lancamento {
+  return l.descricao === "Farmácia" ? { ...l, pagamentoInformadoEm: `${mes}-05` } : l;
+}
+
 /** Lançamentos de exemplo no mês atual, para a demonstração sempre ter o que mostrar. */
 export function lancamentosDemo(perfilId: string, hoje = new Date()): Lancamento[] {
   const mes = mesDe(hojeISO(hoje));
-  const extras = perfilId === "demo-filho" ? comprasDaMaeNoCartaoDoFilho(mes) : [];
+  const extras = perfilId === "demo-filho" ? comprasDaMaeNoCartaoDoFilho(mes).map((l) => comAvisoDePagamento(l, mes)) : [];
   return [...extras, ...(EXEMPLOS[perfilId] ?? [])
     .filter(([dia]) => dia <= Math.max(hoje.getDate(), 16))
     .map(([dia, descricao, categoria, valor, tipo, meio], i) => ({

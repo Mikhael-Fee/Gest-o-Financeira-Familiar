@@ -20,20 +20,22 @@ export interface Repositorio {
   aReceber(): Promise<Lancamento[]>;
   /** Registra que recebeu: cria uma entrada com a soma e marca as compras como pagas. */
   registrarReembolso(ids: string[], data: string, descricao: string): Promise<void>;
+  /** Quem comprou no cartão de outra pessoa avisa que já pagou; o dono confirma com registrarReembolso. */
+  informarPagamento(ids: string[], data: string): Promise<void>;
   /** Compras suas no cartão de outras pessoas que você ainda não pagou. */
   devo(): Promise<(Lancamento & { dono: string })[]>;
   /** Cartões de outras pessoas que marcaram você como quem usa. */
   cartoesQueUso(): Promise<Cartao[]>;
 }
 
-const COLUNAS = "id, data, descricao, categoria, valor_centavos, tipo, meio, pagamento, cartao_id, compra_id, parcela, parcelas, data_compra, de_quem, reembolso_id";
+const COLUNAS = "id, data, descricao, categoria, valor_centavos, tipo, meio, pagamento, cartao_id, compra_id, parcela, parcelas, data_compra, de_quem, reembolso_id, pagamento_informado_em";
 type Linha = {
   id: string; data: string; descricao: string; categoria: string; valor_centavos: number; tipo: Lancamento["tipo"]; meio: Lancamento["meio"];
-  pagamento?: Lancamento["pagamento"]; cartao_id?: string | null; compra_id?: string | null; parcela?: number | null; parcelas?: number | null; data_compra?: string | null; de_quem?: string | null; reembolso_id?: string | null; dono?: string;
+  pagamento?: Lancamento["pagamento"]; cartao_id?: string | null; compra_id?: string | null; parcela?: number | null; parcelas?: number | null; data_compra?: string | null; de_quem?: string | null; reembolso_id?: string | null; pagamento_informado_em?: string | null; dono?: string;
 };
 const daLinha = (r: Linha): Lancamento => ({
   id: r.id, data: r.data, descricao: r.descricao, categoria: r.categoria, valor: r.valor_centavos, tipo: r.tipo, meio: r.meio,
-  pagamento: r.pagamento ?? null, cartaoId: r.cartao_id ?? null, compraId: r.compra_id ?? null, parcela: r.parcela ?? null, parcelas: r.parcelas ?? null, dataCompra: r.data_compra ?? null, deQuem: r.de_quem ?? null, reembolsoId: r.reembolso_id ?? null,
+  pagamento: r.pagamento ?? null, cartaoId: r.cartao_id ?? null, compraId: r.compra_id ?? null, parcela: r.parcela ?? null, parcelas: r.parcelas ?? null, dataCompra: r.data_compra ?? null, deQuem: r.de_quem ?? null, reembolsoId: r.reembolso_id ?? null, pagamentoInformadoEm: r.pagamento_informado_em ?? null,
 });
 const paraLinha = (l: NovoLancamento) => ({
   data: l.data, descricao: l.descricao, categoria: l.categoria, valor_centavos: l.valor, tipo: l.tipo, meio: l.meio,
@@ -101,6 +103,10 @@ export const repositorioSupabase = (eu: string): Repositorio => ({
   async registrarReembolso(ids, data, descricao) {
     const { error } = await supabase!.rpc("registrar_reembolso", { p_ids: ids, p_data: data, p_descricao: descricao });
     if (error) throw new Error("Não foi possível registrar o recebimento.");
+  },
+  async informarPagamento(ids, data) {
+    const { error } = await supabase!.rpc("informar_pagamento", { p_ids: ids, p_data: data });
+    if (error) throw new Error("Não foi possível avisar o pagamento.");
   },
   async devo() {
     const { data, error } = await supabase!.from("lancamentos").select(`${COLUNAS}, dono`).eq("de_quem", eu).neq("dono", eu).is("reembolso_id", null).order("data");
@@ -173,6 +179,9 @@ export function repositorioDemo(
       const id = novoId();
       lista.push({ id, data, descricao, categoria: "Reembolso", valor: itens.reduce((s, l) => s + l.valor, 0), tipo: "entrada", meio: "dinheiro" });
       lista = lista.map((l) => (ids.includes(l.id) ? { ...l, reembolsoId: id } : l));
+    },
+    async informarPagamento(ids, data) {
+      devo = devo.map((l) => (ids.includes(l.id) ? { ...l, pagamentoInformadoEm: data } : l));
     },
     async devo() {
       return [...devo].sort((a, b) => a.data.localeCompare(b.data));

@@ -28,6 +28,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
   const [aReceber, setAReceber] = useState<Lancamento[]>([]);
   const [devo, setDevo] = useState<(Lancamento & { dono: string })[]>([]);
   const [recebendo, setRecebendo] = useState<string | null>(null); // pessoa
+  const [pagando, setPagando] = useState<string | null>(null); // dono do cartão
   const [aviso, setAviso] = useState("");
 
   const carregar = useCallback(async () => {
@@ -171,16 +172,25 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         <section className="painel">
           <div className="cabeca"><h2>A receber</h2><span className="nota">Compras de outros nos seus cartões</span></div>
           <ul className="lista">
-            {receberPorPessoa.map((g) => (
-              <li key={g.pessoa}>
-                <span className="avatar" aria-hidden="true">{nomeDe(g.pessoa).slice(0, 1)}</span>
-                <span className="texto"><b>{nomeDe(g.pessoa)} te deve</b><span>{g.itens.length} {g.itens.length === 1 ? "compra" : "compras"}</span></span>
-                <span className="fim">
-                  <b className="valor">{reais(g.total)}</b>
-                  <button className="btn pequeno" onClick={() => setRecebendo(g.pessoa)}>Recebi</button>
-                </span>
-              </li>
-            ))}
+            {receberPorPessoa.map((g) => {
+              const avisou = g.itens.filter((l) => l.pagamentoInformadoEm);
+              const quando = avisou.map((l) => l.pagamentoInformadoEm!).sort().pop();
+              return (
+                <li key={g.pessoa}>
+                  <span className="avatar" aria-hidden="true">{nomeDe(g.pessoa).slice(0, 1)}</span>
+                  <span className="texto">
+                    <b>{nomeDe(g.pessoa)} te deve</b>
+                    {avisou.length
+                      ? <span className="destaque-texto">Disse que pagou {reais(avisou.reduce((s, l) => s + l.valor, 0))} em {dataCurta(quando!)}</span>
+                      : <span>{g.itens.length} {g.itens.length === 1 ? "compra" : "compras"}</span>}
+                  </span>
+                  <span className="fim">
+                    <b className="valor">{reais(g.total)}</b>
+                    <button className="btn pequeno" onClick={() => setRecebendo(g.pessoa)}>{avisou.length ? "Confirmar" : "Recebi"}</button>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -190,13 +200,18 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           <h2>Você deve</h2>
           {devoPorPessoa.map((g) => (
             <div key={g.pessoa} className="filho">
-              <div className="cabeca"><b>Para {nomeDe(g.pessoa)}</b><b className="valor">{reais(g.total)}</b></div>
+              <div className="cabeca">
+                <b>Para {nomeDe(g.pessoa)} · {reais(g.total)}</b>
+                {g.itens.some((l) => !l.pagamentoInformadoEm)
+                  ? <button className="btn pequeno" onClick={() => setPagando(g.pessoa)}>Paguei</button>
+                  : <span className="nota">Esperando confirmar</span>}
+              </div>
               <ul className="lista">
                 {g.itens.map((l) => {
                   const c = queUso.find((x) => x.id === l.cartaoId);
                   const texto = (
                     <>
-                      <span className="texto"><b>{l.descricao}</b><span>{c ? `${c.banco} · ` : ""}{l.pagamento === "credito" ? `fatura ${dataCurta(l.data)}` : dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}</span></span>
+                      <span className="texto"><b>{l.descricao}</b><span>{c ? `${c.banco} · ` : ""}{l.pagamento === "credito" ? `fatura ${dataCurta(l.data)}` : dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}{l.pagamentoInformadoEm ? ` · você pagou em ${dataCurta(l.pagamentoInformadoEm)}` : ""}</span></span>
                       <span className="valor">{reais(l.valor)}</span>
                     </>
                   );
@@ -206,7 +221,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
               </ul>
             </div>
           ))}
-          <p className="nota">Compras suas no cartão de outra pessoa. Saem daqui quando a pessoa marcar que recebeu.</p>
+          <p className="nota">Compras suas no cartão de outra pessoa. Toque em “Paguei” quando pagar; elas saem daqui quando a pessoa confirmar.</p>
         </section>
       )}
 
@@ -282,8 +297,11 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         />
       )}
       {recebendo && (
-        <Receber
-          nome={nomeDe(recebendo)}
+        <MarcarCompras
+          titulo={`Recebi de ${nomeDe(recebendo)}`}
+          nota={(total) => `Marque o que ${nomeDe(recebendo)} pagou. Entra como uma entrada de ${reais(total)} na sua sobra do mês.`}
+          rotuloData="Data do recebimento"
+          textoSalvar={(total) => `Confirmar ${reais(total)}`}
           itens={aReceber.filter((l) => l.deQuem === recebendo)}
           fechar={() => setRecebendo(null)}
           salvar={async (ids, data) => {
@@ -292,6 +310,22 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
             setAviso("Recebimento registrado");
             if (mesDe(data) !== mes) setMes(mesDe(data));
             else await carregar();
+          }}
+        />
+      )}
+      {pagando && (
+        <MarcarCompras
+          titulo={`Paguei a ${nomeDe(pagando)}`}
+          nota={(total) => `Marque o que você pagou (${reais(total)}). ${nomeDe(pagando)} vê o aviso e confirma.`}
+          rotuloData="Data do pagamento"
+          textoSalvar={(total) => `Avisar ${reais(total)}`}
+          itens={devo.filter((l) => l.dono === pagando && !l.pagamentoInformadoEm)}
+          fechar={() => setPagando(null)}
+          salvar={async (ids, data) => {
+            await repo.informarPagamento(ids, data);
+            setPagando(null);
+            setAviso(`Avisamos ${nomeDe(pagando)}`);
+            await carregar();
           }}
         />
       )}
@@ -613,35 +647,41 @@ function FormCartao({ eu, familia, inicial, voltar, salvar, remover }: {
 }
 
 
-function Receber({ nome, itens, fechar, salvar }: {
-  nome: string;
+/** Marcar várias compras de uma vez: "Recebi" (dono do cartão) ou "Paguei" (quem comprou). */
+function MarcarCompras({ titulo, nota, rotuloData, textoSalvar, itens, fechar, salvar }: {
+  titulo: string;
+  nota: (total: number) => string;
+  rotuloData: string;
+  textoSalvar: (total: number) => string;
   itens: Lancamento[];
   fechar: () => void;
   salvar: (ids: string[], data: string) => Promise<void>;
 }) {
-  const [marcados, setMarcados] = useState<string[]>(itens.map((l) => l.id));
-  const [data, setData] = useState(hojeISO());
+  // Se a pessoa já avisou que pagou, começa com essas compras e a data do aviso.
+  const avisadas = itens.filter((l) => l.pagamentoInformadoEm);
+  const [marcados, setMarcados] = useState<string[]>((avisadas.length ? avisadas : itens).map((l) => l.id));
+  const [data, setData] = useState(avisadas.map((l) => l.pagamentoInformadoEm!).sort().pop() ?? hojeISO());
   const total = itens.filter((l) => marcados.includes(l.id)).reduce((s, l) => s + l.valor, 0);
   return (
-    <Folha titulo={`Recebi de ${nome}`} fechar={fechar} textoSalvar={`Registrar ${reais(total)}`} salvar={async () => {
+    <Folha titulo={titulo} fechar={fechar} textoSalvar={textoSalvar(total)} salvar={async () => {
       if (!marcados.length) return "Marque pelo menos uma compra.";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return "Escolha a data.";
       await salvar(marcados, data);
     }}>
-      <p className="nota">Marque o que {nome} pagou. Entra como uma entrada de {reais(total)} na sua sobra do mês.</p>
+      <p className="nota">{nota(total)}</p>
       <ul className="lista">
         {itens.map((l) => (
           <li key={l.id}>
             <label className="item marcar-item" htmlFor={`r-${l.id}`}>
               <input id={`r-${l.id}`} type="checkbox" checked={marcados.includes(l.id)}
                 onChange={(e) => setMarcados(e.target.checked ? [...marcados, l.id] : marcados.filter((x) => x !== l.id))} />
-              <span className="texto"><b>{l.descricao}</b><span>{l.categoria} · {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}</span></span>
+              <span className="texto"><b>{l.descricao}</b><span>{l.categoria} · {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}{l.pagamentoInformadoEm ? ` · pago em ${dataCurta(l.pagamentoInformadoEm)}` : ""}</span></span>
               <span className="valor">{reais(l.valor)}</span>
             </label>
           </li>
         ))}
       </ul>
-      <label className="campo" htmlFor="r-data">Data do recebimento<input id="r-data" type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
+      <label className="campo" htmlFor="r-data">{rotuloData}<input id="r-data" type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
     </Folha>
   );
 }
