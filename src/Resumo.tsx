@@ -1,0 +1,181 @@
+import { useEffect, useMemo, useState } from "react";
+import { hojeISO, mesDe, nomeMes, somarMes, type Lancamento } from "./lancamentos";
+import { reais } from "./dinheiro";
+import type { Repositorio } from "./repositorio";
+import type { RepositorioCasa } from "./repositorioCasa";
+import type { Despesa } from "./casa";
+import { compromissos, gastosPorCategoria, maioresGastos, sobraPorMes } from "./resumo";
+
+const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const mesCurto = (m: string) => MESES_CURTOS[Number(m.slice(5, 7)) - 1];
+const mesSo = (m: string) => nomeMes(m).split(" ")[0].toLowerCase();
+const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+/** Valor curto para rótulos de gráfico: R$ 860 · R$ 1,3 mil. */
+function curto(c: number) {
+  const r = Math.abs(c) / 100;
+  const s = r >= 1000 ? `${(r / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil` : Math.round(r).toLocaleString("pt-BR");
+  return `${c < 0 ? "−" : ""}R$ ${s}`;
+}
+
+export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCasa }) {
+  const [mes, setMes] = useState(() => mesDe(hojeISO()));
+  const [lista, setLista] = useState<Lancamento[] | null>(null);
+  const [contasCasa, setContasCasa] = useState<Despesa[]>([]);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    let vivo = true;
+    setLista(null);
+    setErro("");
+    Promise.all([repo.listarIntervalo(somarMes(mes, -5), somarMes(mes, 6)), casa.carregar(mes)])
+      .then(([l, c]) => {
+        if (!vivo) return;
+        setLista(l);
+        setContasCasa(c.despesas.filter((d) => d.status === "a_pagar").sort((a, b) => a.data.localeCompare(b.data)));
+      })
+      .catch((e) => vivo && (setErro(e instanceof Error ? e.message : "Erro ao carregar."), setLista([])));
+    return () => { vivo = false; };
+  }, [repo, casa, mes]);
+
+  const dados = useMemo(() => {
+    const l = lista ?? [];
+    const categorias = gastosPorCategoria(l, mes);
+    const total = categorias.reduce((s, f) => s + f.valor, 0);
+    const totalAntes = categorias.reduce((s, f) => s + f.anterior, 0) + gastosPorCategoria(l, somarMes(mes, -1)).filter((f) => !categorias.some((c) => c.categoria === f.categoria)).reduce((s, f) => s + f.valor, 0);
+    return { categorias, total, totalAntes, maiores: maioresGastos(l, mes), sobra: sobraPorMes(l, mes), futuro: compromissos(l, mes) };
+  }, [lista, mes]);
+
+  const { categorias, total, totalAntes, maiores, sobra, futuro } = dados;
+  const maxCat = Math.max(1, ...categorias.map((f) => Math.max(f.valor, f.anterior)));
+  const totalFuturo = futuro.reduce((s, c) => s + c.valor, 0);
+  const totalCasa = contasCasa.reduce((s, d) => s + d.valor, 0);
+  const variacao = totalAntes ? Math.round(((total - totalAntes) / totalAntes) * 100) : null;
+
+  return (
+    <>
+      <div className="mes" role="group" aria-label="Mês">
+        <button className="seta" aria-label="Mês anterior" onClick={() => setMes(somarMes(mes, -1))}>‹</button>
+        <span>{nomeMes(mes)}</span>
+        <button className="seta" aria-label="Próximo mês" onClick={() => setMes(somarMes(mes, 1))}>›</button>
+      </div>
+
+      {erro && <p className="erro painel" role="alert">{erro}</p>}
+      {lista === null && <p className="nota">Carregando…</p>}
+
+      {lista && (
+        <>
+          <section className="destaque">
+            <span className="rotulo">Você gastou em {mesSo(mes)}</span>
+            <p className="valor-grande">{reais(total)}</p>
+            {variacao !== null && (
+              <span className="mini">
+                {total === totalAntes ? "Igual a" : variacao === 0 ? "Quase igual a" : `${Math.abs(variacao)}% ${variacao > 0 ? "a mais que" : "a menos que"}`} {mesSo(somarMes(mes, -1))} ({reais(totalAntes)})
+              </span>
+            )}
+            <span className="mini">Dinheiro, Pix, débito e faturas. VR/VA e compras de outros no seu cartão ficam de fora.</span>
+          </section>
+
+          <section className="painel">
+            <h2>Para onde foi</h2>
+            {categorias.length === 0 && <p className="nota">Nenhum gasto em {mesSo(mes)}.</p>}
+            <ul className="barras" aria-label={`Gastos por categoria em ${mesSo(mes)}`}>
+              {categorias.map((f) => {
+                const delta = f.valor - f.anterior;
+                return (
+                  <li key={f.categoria} title={`${f.categoria}: ${reais(f.valor)} (em ${mesSo(somarMes(mes, -1))}: ${reais(f.anterior)})`}>
+                    <div className="barra-topo"><span>{f.categoria}</span><b>{reais(f.valor)}</b></div>
+                    <div className="trilho">
+                      <span className="preenche" style={{ width: `${(f.valor / maxCat) * 100}%` }} />
+                      {f.anterior > 0 && <span className="marca-antes" style={{ left: `${(f.anterior / maxCat) * 100}%` }} aria-hidden="true" />}
+                    </div>
+                    <span className="mini-cinza">
+                      {f.anterior === 0 ? `não teve em ${mesSo(somarMes(mes, -1))}` : delta === 0 ? `igual a ${mesCurto(somarMes(mes, -1))}` : `${delta > 0 ? "▲" : "▼"} ${reais(Math.abs(delta))} ${delta > 0 ? "a mais" : "a menos"} que ${mesCurto(somarMes(mes, -1))}`}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            {categorias.some((f) => f.anterior > 0) && <p className="nota legenda"><span className="marca-antes-legenda" aria-hidden="true" /> traço = quanto foi em {mesSo(somarMes(mes, -1))}</p>}
+          </section>
+
+          {maiores.length > 0 && (
+            <section className="painel">
+              <h2>Maiores gastos</h2>
+              <ol className="lista numerada">
+                {maiores.map((l) => (
+                  <li key={l.id}>
+                    <span className="texto"><b>{l.descricao}</b><span>{l.categoria} · {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · parcela ${l.parcela}/${l.parcelas}` : ""}</span></span>
+                    <span className="valor">{reais(l.valor)}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          <section className="painel">
+            <div className="cabeca"><h2>Próximos meses</h2><span className="nota">Parcelas já lançadas</span></div>
+            {totalFuturo === 0 ? (
+              <p className="nota">Nenhuma parcela marcada para os próximos 6 meses.</p>
+            ) : (
+              <>
+                <p className="nota">{reais(totalFuturo)} já comprometidos até {mesSo(futuro[futuro.length - 1].mes)}.</p>
+                <Colunas pontos={futuro.map((c) => ({ mes: c.mes, valor: c.valor }))} rotulo="Faturas já marcadas por mês" />
+              </>
+            )}
+          </section>
+
+          {contasCasa.length > 0 && (
+            <section className="painel">
+              <div className="cabeca"><h2>Contas da Casa a pagar</h2><b className="valor">{reais(totalCasa)}</b></div>
+              <ul className="lista">
+                {contasCasa.map((d) => (
+                  <li key={d.id}>
+                    <span className="texto"><b>{d.descricao}</b><span>vence {dataCurta(d.data)}</span></span>
+                    <span className="valor">{reais(d.valor)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className="painel">
+            <h2>Sobra nos últimos 6 meses</h2>
+            <Colunas pontos={sobra} rotulo="Sobra em dinheiro por mês" destacar={mes} />
+          </section>
+        </>
+      )}
+    </>
+  );
+}
+
+/** Colunas simples com o valor em cima: positivo sobe, negativo desce da linha do zero. */
+function Colunas({ pontos, rotulo, destacar }: { pontos: { mes: string; valor: number }[]; rotulo: string; destacar?: string }) {
+  const max = Math.max(1, ...pontos.map((p) => Math.abs(p.valor)));
+  const temNegativo = pontos.some((p) => p.valor < 0);
+  return (
+    <figure className="colunas" aria-label={rotulo}>
+      <div className={`colunas-area${temNegativo ? " com-negativo" : ""}`}>
+        {pontos.map((p) => (
+          <div key={p.mes} className={`coluna${p.mes === destacar ? " atual" : ""}`} title={`${nomeMes(p.mes)}: ${reais(p.valor)}`}>
+            <div className="metade cima">
+              {p.valor > 0 && <span className="rotulo-col">{curto(p.valor)}</span>}
+              {p.valor > 0 && <span className="pilar" style={{ height: `${(p.valor / max) * 100}%` }} />}
+              {p.valor === 0 && <span className="rotulo-col zero">—</span>}
+            </div>
+            {temNegativo && (
+              <div className="metade baixo">
+                {p.valor < 0 && <span className="pilar negativo" style={{ height: `${(-p.valor / max) * 100}%` }} />}
+                {p.valor < 0 && <span className="rotulo-col">{curto(p.valor)}</span>}
+              </div>
+            )}
+            <span className="mes-col">{mesCurto(p.mes)}</span>
+          </div>
+        ))}
+      </div>
+      <table className="so-leitor">
+        <caption>{rotulo}</caption>
+        <tbody>{pontos.map((p) => <tr key={p.mes}><th>{nomeMes(p.mes)}</th><td>{reais(p.valor)}</td></tr>)}</tbody>
+      </table>
+    </figure>
+  );
+}

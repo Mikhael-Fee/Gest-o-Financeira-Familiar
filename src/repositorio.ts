@@ -7,6 +7,8 @@ export type NovoLancamento = Omit<Lancamento, "id"> & { id?: string; /** Só ao 
 
 export interface Repositorio {
   listar(mes: string): Promise<Lancamento[]>;
+  /** Lançamentos de vários meses (do primeiro ao último, inclusive), para o Resumo. */
+  listarIntervalo(deMes: string, ateMes: string): Promise<Lancamento[]>;
   salvar(l: NovoLancamento): Promise<void>;
   /** Várias parcelas de uma compra, gravadas de uma vez. */
   salvarVarios(lista: NovoLancamento[]): Promise<void>;
@@ -59,6 +61,17 @@ export const repositorioSupabase = (eu: string): Repositorio => ({
       .order("data", { ascending: false })
       .order("criado_em", { ascending: false });
     if (error) throw new Error("Não foi possível carregar seus lançamentos.");
+    return (data as Linha[]).map(daLinha);
+  },
+  async listarIntervalo(deMes, ateMes) {
+    const { data, error } = await supabase!
+      .from("lancamentos")
+      .select(COLUNAS)
+      .eq("dono", eu)
+      .gte("data", `${deMes}-01`)
+      .lt("data", `${somarMes(ateMes, 1)}-01`)
+      .order("data");
+    if (error) throw new Error("Não foi possível carregar o resumo.");
     return (data as Linha[]).map(daLinha);
   },
   async salvar(l) {
@@ -137,6 +150,9 @@ export function repositorioDemo(
   return {
     async listar(mes) {
       return lista.filter((l) => l.data.startsWith(mes)).sort((a, b) => b.data.localeCompare(a.data));
+    },
+    async listarIntervalo(deMes, ateMes) {
+      return lista.filter((l) => l.data.slice(0, 7) >= deMes && l.data.slice(0, 7) <= ateMes).sort((a, b) => a.data.localeCompare(b.data));
     },
     async salvar(l) {
       if (l.dono) {

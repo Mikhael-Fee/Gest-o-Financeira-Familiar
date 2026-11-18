@@ -1,6 +1,6 @@
 import type { Perfil } from "./tipos";
 import type { Lancamento } from "./lancamentos";
-import { hojeISO, mesDe } from "./lancamentos";
+import { hojeISO, mesDe, somarMes } from "./lancamentos";
 import type { DadosCasa } from "./casa";
 import type { Cartao } from "./cartoes";
 
@@ -78,6 +78,34 @@ export function lancamentosDemo(perfilId: string, hoje = new Date()): Lancamento
         ? { pagamento: "credito" as const, cartaoId: "demo-nubank", compraId: "demo-compra-notebook", parcela: 7, parcelas: 10, dataCompra: null }
         : {}),
     }))];
+}
+
+/**
+ * Meses anteriores (valores variando um pouco) e as próximas parcelas do notebook,
+ * para o Resumo da demonstração ter histórico e compromissos.
+ */
+export function historicoDemo(perfilId: string, hoje = new Date()): Lancamento[] {
+  const mes = mesDe(hojeISO(hoje));
+  const fatores = [0.92, 1.1, 0.85, 1.04, 0.96];
+  const saida: Lancamento[] = [];
+  (EXEMPLOS[perfilId] ?? []).forEach(([dia, descricao, categoria, valor, tipo, meio], k) => {
+    const notebook = perfilId === "demo-filho" && descricao === "Notebook";
+    for (let i = 1; i <= 5; i++) {
+      const m = somarMes(mes, -i);
+      const v = tipo === "saida" && categoria !== "Casa" && !notebook ? valor * fatores[(i + k) % 5] : valor;
+      saida.push({
+        id: `${perfilId}-h${i}-${k}`, data: `${m}-${String(dia).padStart(2, "0")}`, descricao, categoria, valor: Math.round(v * 100), tipo, meio,
+        ...(notebook ? { pagamento: "credito" as const, cartaoId: "demo-nubank", compraId: "demo-compra-notebook", parcela: 7 - i, parcelas: 10, dataCompra: null } : {}),
+      });
+    }
+    if (notebook)
+      for (let j = 1; j <= 3; j++)
+        saida.push({
+          id: `${perfilId}-f${j}`, data: `${somarMes(mes, j)}-10`, descricao, categoria, valor: Math.round(valor * 100), tipo, meio,
+          pagamento: "credito", cartaoId: "demo-nubank", compraId: "demo-compra-notebook", parcela: 7 + j, parcelas: 10, dataCompra: null,
+        });
+  });
+  return saida;
 }
 
 /** O que a Mãe deve ao Filho na demonstração. */
