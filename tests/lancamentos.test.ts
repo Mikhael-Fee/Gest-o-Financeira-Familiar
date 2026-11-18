@@ -43,7 +43,7 @@ describe("resumir", () => {
   ];
   it("separa dinheiro de VR/VA e ignora outros meses", () => {
     expect(resumir(lista, "2026-11")).toEqual({
-      entrou: 320000, saiu: 50000, sobra: 270000,
+      entrou: 320000, saiu: 50000, sobra: 270000, noCredito: 0,
       beneficioRecebido: 70000, beneficioGasto: 73800, beneficioSobra: -3800,
     });
   });
@@ -56,14 +56,27 @@ describe("demonstração", () => {
   it("gera exemplos no mês atual e permite criar, editar e apagar", async () => {
     const hoje = new Date(2026, 10, 18);
     const repo = repositorioDemo(lancamentosDemo("demo-filho", hoje));
-    expect((await repo.listar("2026-11")).length).toBe(9);
+    expect((await repo.listar("2026-11")).length).toBe(11);
     await repo.salvar({ data: "2026-11-18", descricao: "Mercado", categoria: "Alimentação", valor: 5000, tipo: "saida", meio: "dinheiro" });
     const depois = await repo.listar("2026-11");
-    expect(depois.length).toBe(10);
+    expect(depois.length).toBe(12);
     const novo = depois.find((x) => x.descricao === "Mercado")!;
     await repo.salvar({ ...novo, valor: 6000 });
     expect((await repo.listar("2026-11")).find((x) => x.id === novo.id)!.valor).toBe(6000);
     await repo.apagar(novo.id);
-    expect((await repo.listar("2026-11")).length).toBe(9);
+    expect((await repo.listar("2026-11")).length).toBe(11);
+  });
+});
+
+describe("compra no cartão de outra pessoa (demonstração)", () => {
+  it("a Mãe lança no cartão do Filho e vê em Você deve, não nos lançamentos dela", async () => {
+    const hoje = new Date(2026, 10, 18);
+    const { devoDemo, cartoesQueUsoDemo } = await import("../src/demo");
+    const repo = repositorioDemo([], [], devoDemo("demo-mae", hoje), cartoesQueUsoDemo("demo-mae"));
+    const [itau] = await repo.cartoesQueUso();
+    expect(itau.dono).toBe("demo-filho");
+    await repo.salvarVarios([{ data: "2026-12-02", descricao: "Mercado", categoria: "Compras", valor: 9000, tipo: "saida", meio: "dinheiro", pagamento: "credito", cartaoId: itau.id, deQuem: "demo-mae", dono: "demo-filho" }]);
+    expect((await repo.devo()).map((l) => l.descricao)).toContain("Mercado");
+    expect(await repo.listar("2026-12")).toHaveLength(0);
   });
 });

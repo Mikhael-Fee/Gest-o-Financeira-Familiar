@@ -150,3 +150,16 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .trancado { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px dashed var(--line); border-radius: 16px; }
 .cadeado { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
 .cadeado svg { width: 18px; height: 18px; }
+
+/* Etapa 5: Cartões */
+.icone.cartao { background: var(--surface-2); color: var(--fg); }
+.mini-cinza { font-size: 11px; color: var(--muted); }
+.campo.marcar { flex-direction: row; align-items: center; gap: 8px; align-self: end; padding-bottom: 12px; }
+.campo.marcar input { width: 20px; height: 20px; accent-color: var(--accent); }
+.previa { background: var(--accent-soft); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.segmento button { font-size: 13px; padding: 10px 4px; }
+.marcar-item { cursor: pointer; }
+.marcar-item input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+
+/* Aviso de que a pessoa já pagou: chama atenção para confirmar. */
+.texto .destaque-texto { color: var(--accent); font-weight: 600; }
