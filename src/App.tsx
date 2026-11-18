@@ -14,6 +14,10 @@ import { Resumo } from "./Resumo";
 import { BotaoInstalar } from "./Instalar";
 
 type Sessao = { perfil: Perfil; demo: boolean };
+
+// A demonstração (dados de exemplo) só aparece quando o app não está ligado ao banco,
+// como no computador de quem desenvolve, ou se VITE_DEMO=1. O site oficial não mostra.
+const DEMO_LIGADA = !supabase || import.meta.env.VITE_DEMO === "1";
 type Aba = "minhas" | "resumo" | "casa" | "familia" | "ajustes";
 
 export function App() {
@@ -107,6 +111,7 @@ function Entrar({ onDemo }: { onDemo: (p: Perfil) => void }) {
         <p className="nota painel">O app ainda não está ligado ao banco de dados. Explore a demonstração abaixo.</p>
       )}
 
+      {DEMO_LIGADA && (
       <section className="painel">
         <h2>Ver demonstração</h2>
         <p className="nota">Dados de exemplo. Escolha quem você quer ser:</p>
@@ -118,6 +123,7 @@ function Entrar({ onDemo }: { onDemo: (p: Perfil) => void }) {
           ))}
         </div>
       </section>
+      )}
       <BotaoInstalar />
     </main>
   );

@@ -17,7 +17,7 @@ npm test           # testes
 npm run build      # versão para publicar (pasta dist)
 ```
 
-Sem as variáveis do Supabase o app abre só no **modo demonstração**, com dados de exemplo.
+Sem as variáveis do Supabase o app abre só no **modo demonstração**, com dados de exemplo. Com o banco ligado (site oficial), a demonstração não aparece; para mostrá-la numa prévia, use `VITE_DEMO=1`.
 
 ## Ligar ao Supabase
 
