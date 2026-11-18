@@ -102,8 +102,11 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
     for (const l of itens) m.set(chave(l), [...(m.get(chave(l)) ?? []), l]);
     return [...m.entries()].map(([pessoa, ls]) => ({ pessoa, itens: ls, total: ls.reduce((s, l) => s + l.valor, 0) }));
   };
-  const receberPorPessoa = agrupar(aReceber, (l) => l.deQuem!);
-  const devoPorPessoa = agrupar(devo, (l) => l.dono);
+  // Só o que vence até o mês escolhido (fatura do mês e atrasadas); parcelas futuras ficam para os meses delas.
+  const aReceberMes = aReceber.filter((l) => mesDe(l.data) <= mes);
+  const devoMes = devo.filter((l) => mesDe(l.data) <= mes);
+  const receberPorPessoa = agrupar(aReceberMes, (l) => l.deQuem!);
+  const devoPorPessoa = agrupar(devoMes, (l) => l.dono);
   const pendencias = receberPorPessoa.length + devoPorPessoa.length;
   const pendentes = pendentesDoMes(fixos, lancados, mes, mesDe(hojeISO()));
   const alertas = useMemo(() => situacaoLimites(limites, gastosPorCategoria(lista ?? [], mes)).filter((x) => x.estado !== "ok"), [limites, lista, mes]);
@@ -283,7 +286,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
             {cartoesCredito.map((c) => {
               const f = faturas.get(c.id);
               const meu = !c.dono;
-              const aPagar = meu ? 0 : devo.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
+              const aPagar = meu ? 0 : devoMes.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
               return (
                 <li key={c.id}>
                   {meu ? (
@@ -410,7 +413,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           nota={(total) => `Marque o que ${nomeDe(recebendo)} pagou. Entra como uma entrada de ${reais(total)} na sua sobra do mês.`}
           rotuloData="Data do recebimento"
           textoSalvar={(total) => `Confirmar ${reais(total)}`}
-          itens={aReceber.filter((l) => l.deQuem === recebendo)}
+          itens={aReceberMes.filter((l) => l.deQuem === recebendo)}
           fechar={() => setRecebendo(null)}
           salvar={async (ids, data) => {
             await repo.registrarReembolso(ids, data, `Reembolso de ${nomeDe(recebendo)}`);
@@ -427,7 +430,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           nota={(total) => `Marque o que você pagou (${reais(total)}). ${nomeDe(pagando)} vê o aviso e confirma.`}
           rotuloData="Data do pagamento"
           textoSalvar={(total) => `Avisar ${reais(total)}`}
-          itens={devo.filter((l) => l.dono === pagando && !l.pagamentoInformadoEm)}
+          itens={devoMes.filter((l) => l.dono === pagando && !l.pagamentoInformadoEm)}
           fechar={() => setPagando(null)}
           salvar={async (ids, data) => {
             await repo.informarPagamento(ids, data);
