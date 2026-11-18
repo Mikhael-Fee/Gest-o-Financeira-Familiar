@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CATEGORIAS, hojeISO, mesDe, nomeMes, resumir, somarMes, type Lancamento, type Pagamento, type Tipo } from "./lancamentos";
+import { CATEGORIAS, dividirTotal, hojeISO, mesDe, nomeMes, resumir, somarMes, type Lancamento, type Pagamento, type Tipo } from "./lancamentos";
 import { lerValor, reais } from "./dinheiro";
 import type { Repositorio, NovoLancamento } from "./repositorio";
 import type { RepositorioCasa } from "./repositorioCasa";
@@ -102,8 +102,11 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
     for (const l of itens) m.set(chave(l), [...(m.get(chave(l)) ?? []), l]);
     return [...m.entries()].map(([pessoa, ls]) => ({ pessoa, itens: ls, total: ls.reduce((s, l) => s + l.valor, 0) }));
   };
-  const receberPorPessoa = agrupar(aReceber, (l) => l.deQuem!);
-  const devoPorPessoa = agrupar(devo, (l) => l.dono);
+  // Só o que vence até o mês escolhido (fatura do mês e atrasadas); parcelas futuras ficam para os meses delas.
+  const aReceberMes = aReceber.filter((l) => mesDe(l.data) <= mes);
+  const devoMes = devo.filter((l) => mesDe(l.data) <= mes);
+  const receberPorPessoa = agrupar(aReceberMes, (l) => l.deQuem!);
+  const devoPorPessoa = agrupar(devoMes, (l) => l.dono);
   const pendencias = receberPorPessoa.length + devoPorPessoa.length;
   const pendentes = pendentesDoMes(fixos, lancados, mes, mesDe(hojeISO()));
   const alertas = useMemo(() => situacaoLimites(limites, gastosPorCategoria(lista ?? [], mes)).filter((x) => x.estado !== "ok"), [limites, lista, mes]);
@@ -283,7 +286,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
             {cartoesCredito.map((c) => {
               const f = faturas.get(c.id);
               const meu = !c.dono;
-              const aPagar = meu ? 0 : devo.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
+              const aPagar = meu ? 0 : devoMes.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
               return (
                 <li key={c.id}>
                   {meu ? (
@@ -410,7 +413,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           nota={(total) => `Marque o que ${nomeDe(recebendo)} pagou. Entra como uma entrada de ${reais(total)} na sua sobra do mês.`}
           rotuloData="Data do recebimento"
           textoSalvar={(total) => `Confirmar ${reais(total)}`}
-          itens={aReceber.filter((l) => l.deQuem === recebendo)}
+          itens={aReceberMes.filter((l) => l.deQuem === recebendo)}
           fechar={() => setRecebendo(null)}
           salvar={async (ids, data) => {
             await repo.registrarReembolso(ids, data, `Reembolso de ${nomeDe(recebendo)}`);
@@ -427,7 +430,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           nota={(total) => `Marque o que você pagou (${reais(total)}). ${nomeDe(pagando)} vê o aviso e confirma.`}
           rotuloData="Data do pagamento"
           textoSalvar={(total) => `Avisar ${reais(total)}`}
-          itens={devo.filter((l) => l.dono === pagando && !l.pagamentoInformadoEm)}
+          itens={devoMes.filter((l) => l.dono === pagando && !l.pagamentoInformadoEm)}
           fechar={() => setPagando(null)}
           salvar={async (ids, data) => {
             await repo.informarPagamento(ids, data);
@@ -474,6 +477,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
   const [paraCasa, setParaCasa] = useState<ParaCasa>("enviado");
   const [deQuem, setDeQuem] = useState(inicial.deQuem ?? "");
   const [repetir, setRepetir] = useState(false);
+  const [valorE, setValorE] = useState<"total" | "parcela">("total");
 
   const categorias = CATEGORIAS[tipo];
   useEffect(() => {
@@ -500,6 +504,9 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
   const credito = como === "credito" && !editando;
   const parcelado = credito && nParcelas > 1;
   const centavos = lerValor(valor);
+  // Valor de cada parcela (1ª a n-ésima). Pelo total, os centavos que sobram ficam na 1ª.
+  const valores = centavos === null ? [] : parcelado && valorE === "total" ? dividirTotal(centavos, nParcelas) : Array(nParcelas).fill(centavos);
+  const totalCompra = valores.reduce((a, b) => a + b, 0);
 
   // Prévia das parcelas para mostrar antes de salvar.
   const previa = useMemo(() => {
@@ -537,7 +544,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
       if (!previa) return "Confira o cartão e a data.";
       const compraId = novoId();
       const itens = previa.map((p) => ({
-        ...base, data: p.data, dataCompra: emAndamento ? null : data, compraId,
+        ...base, valor: valores[p.parcela - 1] ?? centavos, data: p.data, dataCompra: emAndamento ? null : data, compraId,
         parcela: nParcelas > 1 ? p.parcela : null, parcelas: nParcelas > 1 ? p.parcelas : null,
       }));
       return salvar(itens, mostrarCasa ? paraCasa : "nao", podeRepetir && repetir);
@@ -622,7 +629,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
 
       <div className="duas">
         <label className="campo" htmlFor="f-valor">
-          {parcelado ? "Valor de cada parcela" : "Valor (R$)"}
+          {parcelado ? (valorE === "total" ? "Valor total da compra" : "Valor de cada parcela") : "Valor (R$)"}
           <input id="f-valor" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" />
         </label>
         {!(parcelado && emAndamento) && !ehParcelaExistente && (
@@ -632,6 +639,10 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
           </label>
         )}
       </div>
+
+      {parcelado && (
+        <Segmento rotulo="O valor digitado é" valor={valorE} mudar={setValorE} opcoes={[["total", "Total da compra"], ["parcela", "De cada parcela"]]} />
+      )}
 
       <label className="campo" htmlFor="f-categoria">
         Categoria
@@ -646,7 +657,8 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
             <p>Entra na fatura que vence em <b>{dataCurta(previa[0].data)}/{previa[0].data.slice(0, 4)}</b>.</p>
           ) : (
             <>
-              <p><b>{previa.length} parcelas</b> de {reais(centavos)} · total {emAndamento ? "que falta" : ""} {reais(centavos * previa.length)}</p>
+              <p><b>{nParcelas}x</b> de {reais(valores[nParcelas - 1])}{valores[0] !== valores[nParcelas - 1] ? ` (1ª de ${reais(valores[0])})` : ""} · total {reais(totalCompra)}</p>
+              {emAndamento && previa.length < nParcelas && <p className="nota">Faltam {previa.length} parcelas: {reais(previa.reduce((s, p) => s + (valores[p.parcela - 1] ?? 0), 0))}.</p>}
               <p className="nota">
                 Da {previa[0].parcela}ª ({dataCurta(previa[0].data)}/{previa[0].data.slice(2, 4)}) até a {previa[previa.length - 1].parcela}ª ({dataCurta(previa[previa.length - 1].data)}/{previa[previa.length - 1].data.slice(2, 4)})
                 {emAndamento && nAtual > 1 ? `. As ${nAtual - 1} anteriores não entram.` : "."}

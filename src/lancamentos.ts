@@ -69,3 +69,10 @@ export function resumir(lista: Lancamento[], mes: string): Resumo {
   }
   return { ...r, sobra: r.entrou - r.saiu, beneficioSobra: r.beneficioRecebido - r.beneficioGasto };
 }
+
+/** Divide um total em n parcelas iguais; os centavos que sobram vão para a 1ª parcela. */
+export function dividirTotal(total: number, n: number): number[] {
+  const partes = Math.max(1, Math.floor(n));
+  const cada = Math.floor(total / partes);
+  return Array.from({ length: partes }, (_, i) => (i === 0 ? total - cada * (partes - 1) : cada));
+}
