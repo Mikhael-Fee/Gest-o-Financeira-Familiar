@@ -14,11 +14,13 @@ export interface Repositorio {
 type Linha = { id: string; data: string; descricao: string; categoria: string; valor_centavos: number; tipo: Lancamento["tipo"]; meio: Lancamento["meio"] };
 const daLinha = (r: Linha): Lancamento => ({ id: r.id, data: r.data, descricao: r.descricao, categoria: r.categoria, valor: r.valor_centavos, tipo: r.tipo, meio: r.meio });
 
-export const repositorioSupabase: Repositorio = {
+// Filtra pelo dono: com a Etapa 4, o banco também devolve lançamentos que outras pessoas compartilharam.
+export const repositorioSupabase = (eu: string): Repositorio => ({
   async listar(mes) {
     const { data, error } = await supabase!
       .from("lancamentos")
       .select("id, data, descricao, categoria, valor_centavos, tipo, meio")
+      .eq("dono", eu)
       .gte("data", `${mes}-01`)
       .lt("data", `${somarMes(mes, 1)}-01`)
       .order("data", { ascending: false })
@@ -37,7 +39,9 @@ export const repositorioSupabase: Repositorio = {
     const { error } = await supabase!.from("lancamentos").delete().eq("id", id);
     if (error) throw new Error("Não foi possível apagar. Tente de novo.");
   },
-};
+});
+
+export const daLinhaLancamento = daLinha;
 
 // --- Demonstração: dados de exemplo em memória, descartados ao sair.
 export function repositorioDemo(inicial: Lancamento[]): Repositorio {

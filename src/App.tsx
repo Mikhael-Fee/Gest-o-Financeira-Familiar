@@ -3,6 +3,8 @@ import { supabase, dominioLogin } from "./supabase";
 import { usuarioParaEmail } from "./usuario";
 import { PERFIS_DEMO, casaDemo, lancamentosDemo } from "./demo";
 import { Casa } from "./Casa";
+import { Familia } from "./Familia";
+import { repositorioPrivacidadeDemo, repositorioPrivacidadeSupabase } from "./privacidade";
 import { repositorioCasaDemo, repositorioCasaSupabase } from "./repositorioCasa";
 import { Minhas } from "./Minhas";
 import { repositorioDemo, repositorioSupabase } from "./repositorio";
@@ -125,8 +127,12 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
   const { perfil } = sessao;
   // Na demonstração, a Casa é uma só para todos: trocar de pessoa mantém o que foi feito.
   const repoCasa = useMemo(() => (sessao.demo ? repositorioCasaDemo(casaDemo()) : repositorioCasaSupabase), [sessao.demo]);
+  const repoPrivacidade = useMemo(
+    () => (sessao.demo ? repositorioPrivacidadeDemo({ "demo-filha": "situacao", "demo-pai": "tudo" }, (p) => lancamentosDemo(p)) : repositorioPrivacidadeSupabase),
+    [sessao.demo],
+  );
   const repo = useMemo(
-    () => (sessao.demo ? repositorioDemo(lancamentosDemo(perfil.id)) : repositorioSupabase),
+    () => (sessao.demo ? repositorioDemo(lancamentosDemo(perfil.id)) : repositorioSupabase(perfil.id)),
     [sessao.demo, perfil.id],
   );
 
@@ -170,8 +176,9 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
         {aba === "casa" && familia.length > 0 && <Casa key={perfil.id} repo={repoCasa} eu={perfil} familia={familia} />}
         {aba === "casa" && familia.length === 0 && <p className="nota">Carregando a família…</p>}
 
-        {aba === "familia" && (
+        {aba === "familia" && familia.length > 0 && (
           <>
+            <Familia key={perfil.id} repo={repoPrivacidade} eu={perfil} familia={familia} />
             <section className="painel">
               <h2>Sua conta</h2>
               <dl className="dados">
@@ -179,19 +186,6 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
                 <dt>Papel</dt><dd>{ROTULO_PAPEL[perfil.papel]}</dd>
               </dl>
             </section>
-            <section className="painel">
-              <h2>Quem faz parte</h2>
-              <ul className="lista">
-                {familia.map((p) => (
-                  <li key={p.id}>
-                    <span className="avatar" aria-hidden="true">{p.nome.slice(0, 1)}</span>
-                    <span className="nome">{p.nome}{p.id === perfil.id ? " (você)" : ""}</span>
-                    <span className={`selo ${p.papel}`}>{ROTULO_PAPEL[p.papel]}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <EmBreve etapa={4} texto="Escolher se você mostra suas finanças para a família. Começa tudo privado." />
             <BotaoInstalar />
           </>
         )}
@@ -215,14 +209,6 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
   );
 }
 
-function EmBreve({ etapa, texto }: { etapa: number; texto: string }) {
-  return (
-    <section className="em-breve">
-      <span className="rotulo">Chega na etapa {etapa}</span>
-      <p>{texto}</p>
-    </section>
-  );
-}
 
 const svg = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
 const IconeEu = () => (<svg {...svg}><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>);
