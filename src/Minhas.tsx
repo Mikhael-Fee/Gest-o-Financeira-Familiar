@@ -5,7 +5,7 @@ import type { Repositorio, NovoLancamento } from "./repositorio";
 import type { RepositorioCasa } from "./repositorioCasa";
 import type { Forma } from "./casa";
 import { podeGerenciarCasa, type Perfil } from "./tipos";
-import { BANCOS, diaDoMes, gerarParcelas, nomeCartao, nomeEmprestado, vencimentoDaCompra, type Cartao } from "./cartoes";
+import { BANCOS, datasDoLancamento, diaDoMes, gerarParcelas, nomeCartao, nomeEmprestado, vencimentoDaCompra, type Cartao } from "./cartoes";
 import { Folha, Segmento } from "./Folha";
 import { CartaoDetalhe } from "./CartaoDetalhe";
 import { Busca } from "./Busca";
@@ -244,6 +244,8 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
             })}
             {devoPorPessoa.map((g) => {
               const falta = g.itens.some((l) => !l.pagamentoInformadoEm);
+              // O que você já avisou que pagou não conta mais como dívida.
+              const aindaDeve = g.itens.filter((l) => !l.pagamentoInformadoEm).reduce((s, l) => s + l.valor, 0);
               const aberto = abertos.includes(g.pessoa);
               return (
                 <li key={`d-${g.pessoa}`} className="com-detalhe">
@@ -251,8 +253,8 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
                     <button className="item" aria-expanded={aberto} onClick={() => setAbertos(aberto ? abertos.filter((x) => x !== g.pessoa) : [...abertos, g.pessoa])}>
                       <span className="avatar deve" aria-hidden="true">{nomeDe(g.pessoa).slice(0, 1)}</span>
                       <span className="texto">
-                        <b>Você deve {reais(g.total)} a {nomeDe(g.pessoa)}</b>
-                        <span>{falta ? `${g.itens.length} ${g.itens.length === 1 ? "compra" : "compras"}` : "Você avisou · esperando confirmar"} · {aberto ? "ocultar" : "ver"}</span>
+                        <b>{falta ? `Você deve ${reais(aindaDeve)} a ${nomeDe(g.pessoa)}` : `Você pagou ${reais(g.total)} a ${nomeDe(g.pessoa)}`}</b>
+                        <span>{falta ? `${g.itens.filter((l) => !l.pagamentoInformadoEm).length} ${g.itens.filter((l) => !l.pagamentoInformadoEm).length === 1 ? "compra" : "compras"}` : "Você avisou · esperando confirmar"} · {aberto ? "ocultar" : "ver"}</span>
                       </span>
                     </button>
                     {falta && <button className="btn pequeno" onClick={() => setPagando(g.pessoa)}>Paguei</button>}
@@ -286,7 +288,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
             {cartoesCredito.map((c) => {
               const f = faturas.get(c.id);
               const meu = !c.dono;
-              const aPagar = meu ? 0 : devoMes.filter((l) => l.cartaoId === c.id).reduce((s, l) => s + l.valor, 0);
+              const aPagar = meu ? 0 : devoMes.filter((l) => l.cartaoId === c.id && !l.pagamentoInformadoEm).reduce((s, l) => s + l.valor, 0);
               return (
                 <li key={c.id}>
                   {meu ? (
@@ -431,9 +433,17 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           rotuloData="Data do pagamento"
           textoSalvar={(total) => `Avisar ${reais(total)}`}
           itens={devoMes.filter((l) => l.dono === pagando && !l.pagamentoInformadoEm)}
+          opcao="Lançar como saída nas minhas finanças"
           fechar={() => setPagando(null)}
-          salvar={async (ids, data) => {
+          salvar={async (ids, data, lancar) => {
             await repo.informarPagamento(ids, data);
+            // O dinheiro saiu da sua conta: entra nas suas saídas, com a categoria de cada compra.
+            if (lancar) {
+              const pagas = devo.filter((l) => ids.includes(l.id));
+              await repo.salvarVarios(pagas.map((l) => ({
+                data, descricao: `${l.descricao} (cartão de ${nomeDe(pagando)})`.slice(0, 80), categoria: l.categoria, valor: l.valor, tipo: "saida" as const, meio: "dinheiro" as const,
+              })));
+            }
             setPagando(null);
             setAviso(`Avisamos ${nomeDe(pagando)}`);
             await carregar();
@@ -537,8 +547,12 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
       ...(donoCartao ? { dono: donoCartao } : {}),
     };
     if (editando) {
-      // Editar mexe só nesta linha (numa compra parcelada, só nesta parcela).
-      return salvar([{ ...base, data: ehParcelaExistente ? inicial.data : data, dataCompra: ehParcelaExistente ? inicial.dataCompra ?? null : base.dataCompra }], "nao", false);
+      // Editar mexe só nesta linha (numa compra parcelada, só nesta parcela, que fica na fatura dela).
+      // Compra à vista no crédito: a data digitada é a da compra; a fatura é recalculada.
+      const datas = ehParcelaExistente
+        ? { data: inicial.data, dataCompra: inicial.dataCompra ?? null }
+        : datasDoLancamento(data, base.pagamento === "credito", cartao);
+      return salvar([{ ...base, ...datas }], "nao", false);
     }
     if (credito) {
       if (!previa) return "Confira o cartão e a data.";
@@ -634,7 +648,7 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
         </label>
         {!(parcelado && emAndamento) && !ehParcelaExistente && (
           <label className="campo" htmlFor="f-data">
-            {credito ? "Data da compra" : "Data"}
+            {como === "credito" && tipo === "saida" ? "Data da compra" : "Data"}
             <input id="f-data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
           </label>
         )}
@@ -650,6 +664,9 @@ function Formulario({ inicial, cartoes, eu, nomeDe, familia, perguntaCasa, cadas
           {categorias.map((c) => <option key={c}>{c}</option>)}
         </select>
       </label>
+      {tipo === "saida" && categoria === "Cartão" && como !== "credito" && (
+        <p className="nota alerta">As compras no crédito já entram sozinhas na fatura do mês. Não lance aqui o pagamento da fatura, senão o gasto conta duas vezes. Use “Cartão” só para anuidade, juros ou tarifa.</p>
+      )}
 
       {previa && centavos !== null && (
         <div className="previa">
@@ -752,15 +769,18 @@ export function FormCartao({ eu, familia, inicial, voltar, salvar, remover }: {
 
 
 /** Marcar várias compras de uma vez: "Recebi" (dono do cartão) ou "Paguei" (quem comprou). */
-function MarcarCompras({ titulo, nota, rotuloData, textoSalvar, itens, fechar, salvar }: {
+function MarcarCompras({ titulo, nota, rotuloData, textoSalvar, itens, opcao, fechar, salvar }: {
   titulo: string;
   nota: (total: number) => string;
   rotuloData: string;
   textoSalvar: (total: number) => string;
   itens: Lancamento[];
+  /** Caixa de marcar extra, que começa marcada (ex.: lançar a saída em Minhas). */
+  opcao?: string;
   fechar: () => void;
-  salvar: (ids: string[], data: string) => Promise<void>;
+  salvar: (ids: string[], data: string, opcaoMarcada: boolean) => Promise<void>;
 }) {
+  const [comOpcao, setComOpcao] = useState(true);
   // Se a pessoa já avisou que pagou, começa com essas compras e a data do aviso.
   const avisadas = itens.filter((l) => l.pagamentoInformadoEm);
   const [marcados, setMarcados] = useState<string[]>((avisadas.length ? avisadas : itens).map((l) => l.id));
@@ -770,7 +790,7 @@ function MarcarCompras({ titulo, nota, rotuloData, textoSalvar, itens, fechar, s
     <Folha titulo={titulo} fechar={fechar} textoSalvar={textoSalvar(total)} salvar={async () => {
       if (!marcados.length) return "Marque pelo menos uma compra.";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return "Escolha a data.";
-      await salvar(marcados, data);
+      await salvar(marcados, data, Boolean(opcao) && comOpcao);
     }}>
       <p className="nota">{nota(total)}</p>
       <ul className="lista">
@@ -786,6 +806,12 @@ function MarcarCompras({ titulo, nota, rotuloData, textoSalvar, itens, fechar, s
         ))}
       </ul>
       <label className="campo" htmlFor="r-data">{rotuloData}<input id="r-data" type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
+      {opcao && (
+        <label className="campo marcar" htmlFor="r-opcao">
+          <input id="r-opcao" type="checkbox" checked={comOpcao} onChange={(e) => setComOpcao(e.target.checked)} />
+          {opcao}
+        </label>
+      )}
     </Folha>
   );
 }

@@ -33,7 +33,13 @@ export type Combinado = {
   beneficio: number;
 };
 
-export type DadosCasa = { ajudas: Ajuda[]; despesas: Despesa[]; combinados: Combinado[] };
+export type DadosCasa = {
+  ajudas: Ajuda[];
+  despesas: Despesa[];
+  combinados: Combinado[];
+  /** Contas de meses anteriores que ainda não foram pagas. */
+  atrasadas?: Despesa[];
+};
 
 export type AjudaDoFilho = {
   perfil: Perfil;
@@ -69,7 +75,8 @@ export function resumirCasa(dados: DadosCasa, perfis: Perfil[], mes: string): Re
     if (a.meio === "dinheiro") caixaDinheiro += a.valor;
     else caixaBeneficio += a.valor;
   }
-  let aPagar = 0;
+  // Conta atrasada continua a pagar até alguém marcar como paga.
+  let aPagar = (dados.atrasadas ?? []).filter((d) => d.status === "a_pagar" && mesDe(d.data) < mes).reduce((s, d) => s + d.valor, 0);
   let pagoTotal = 0;
   for (const d of despesas) {
     if (d.status === "a_pagar") {

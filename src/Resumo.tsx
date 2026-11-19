@@ -40,7 +40,7 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
       .then(([l, c]) => {
         if (!vivo) return;
         setLista(l);
-        setContasCasa(c.despesas.filter((d) => d.status === "a_pagar").sort((a, b) => a.data.localeCompare(b.data)));
+        setContasCasa([...(c.atrasadas ?? []), ...c.despesas].filter((d) => d.status === "a_pagar").sort((a, b) => a.data.localeCompare(b.data)));
       })
       .catch((e) => vivo && (setErro(e instanceof Error ? e.message : "Erro ao carregar."), setLista([])));
     return () => { vivo = false; };

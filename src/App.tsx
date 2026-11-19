@@ -183,7 +183,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
 
         {aba === "resumo" && <Resumo key={perfil.id} repo={repo} casa={repoCasa} />}
 
-        {aba === "casa" && familia.length > 0 && <Casa key={perfil.id} repo={repoCasa} eu={perfil} familia={familia} />}
+        {aba === "casa" && familia.length > 0 && <Casa key={perfil.id} repo={repoCasa} eu={perfil} familia={familia} pessoal={repo} />}
         {aba === "casa" && familia.length === 0 && <p className="nota">Carregando a família…</p>}
 
         {aba === "familia" && familia.length > 0 && <Familia key={perfil.id} repo={repoPrivacidade} eu={perfil} familia={familia} />}
