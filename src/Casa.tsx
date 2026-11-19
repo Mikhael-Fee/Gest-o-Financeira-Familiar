@@ -3,6 +3,7 @@ import { hojeISO, mesDe, nomeMes, somarMes, type Meio } from "./lancamentos";
 import { lerValor, reais } from "./dinheiro";
 import { resumirCasa, type Ajuda, type Combinado, type DadosCasa, type Despesa, type Forma } from "./casa";
 import type { RepositorioCasa } from "./repositorioCasa";
+import type { Repositorio } from "./repositorio";
 import { podeGerenciarCasa, type Perfil } from "./tipos";
 import { Folha, Segmento } from "./Folha";
 
@@ -17,7 +18,7 @@ type Aberto =
 const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const centavosParaTexto = (c: number | null | undefined) => (c ? (c / 100).toFixed(2).replace(".", ",") : "");
 
-export function Casa({ repo, eu, familia }: { repo: RepositorioCasa; eu: Perfil; familia: Perfil[] }) {
+export function Casa({ repo, eu, familia, pessoal }: { repo: RepositorioCasa; eu: Perfil; familia: Perfil[]; /** Finanças da própria pessoa, para lançar a saída da ajuda. */ pessoal?: Repositorio }) {
   const [mes, setMes] = useState(() => mesDe(hojeISO()));
   const [dados, setDados] = useState<DadosCasa | null>(null);
   const [erro, setErro] = useState("");
@@ -144,15 +145,15 @@ export function Casa({ repo, eu, familia }: { repo: RepositorioCasa; eu: Perfil;
                 <p className="nota">{reais(r.pagoTotal)} pagos de {reais(r.totalDespesas)}</p>
               </>
             )}
-            {dados.despesas.length === 0 && <p className="nota">Nenhuma despesa em {nomeMes(mes).toLowerCase()}.</p>}
+            {dados.despesas.length === 0 && !dados.atrasadas?.length && <p className="nota">Nenhuma despesa em {nomeMes(mes).toLowerCase()}.</p>}
             <ul className="lista">
-              {dados.despesas.map((d) => (
+              {[...(dados.atrasadas ?? []), ...dados.despesas].map((d) => (
                 <li key={d.id}>
                   <button className="item" disabled={!gerencia} onClick={() => setAberto({ tipo: "despesa", despesa: d })}>
                     <span className={`icone ${d.meio}`} aria-hidden="true">{d.descricao.slice(0, 2)}</span>
                     <span className="texto">
                       <b>{d.descricao}</b>
-                      <span>{dataCurta(d.data)} · {d.meio === "beneficio" ? "VR/VA" : "dinheiro"}</span>
+                      <span>{dataCurta(d.data)}{mesDe(d.data) < mes ? `/${d.data.slice(2, 4)} · atrasada` : ""} · {d.meio === "beneficio" ? "VR/VA" : "dinheiro"}</span>
                     </span>
                   </button>
                   <span className="fim">
@@ -198,7 +199,11 @@ export function Casa({ repo, eu, familia }: { repo: RepositorioCasa; eu: Perfil;
 
       {aberto?.tipo === "ajuda" && (
         <FormAjuda dataPadrao={dataPadrao} fechar={() => setAberto(null)}
-          salvar={(a) => feito(a.forma === "pago_direto" ? "Despesa paga informada" : "Ajuda informada", () => repo.informarAjuda(eu.id, a))} />
+          salvar={({ lancarEmMinhas, ...a }) => feito(a.forma === "pago_direto" ? "Despesa paga informada" : "Ajuda informada", async () => {
+            await repo.informarAjuda(eu.id, a);
+            // O dinheiro (ou o VR) saiu de você: entra também nas suas saídas, como quando se lança por Minhas.
+            if (lancarEmMinhas && pessoal) await pessoal.salvar({ data: a.data, descricao: a.descricao, categoria: "Casa", valor: a.valor, tipo: "saida", meio: a.meio });
+          })} />
       )}
       {aberto?.tipo === "pendente" && (
         <Folha titulo="Ajuda informada" fechar={() => setAberto(null)} textoSalvar="Fechar" salvar={async () => setAberto(null)}
@@ -267,7 +272,8 @@ function validar(descricao: string, valor: string, data: string): string | numbe
   return c;
 }
 
-function FormAjuda({ dataPadrao, fechar, salvar }: { dataPadrao: string; fechar: () => void; salvar: (a: { data: string; descricao: string; valor: number; meio: Meio; forma: Forma }) => Promise<void> }) {
+function FormAjuda({ dataPadrao, fechar, salvar }: { dataPadrao: string; fechar: () => void; salvar: (a: { data: string; descricao: string; valor: number; meio: Meio; forma: Forma; lancarEmMinhas: boolean }) => Promise<void> }) {
+  const [lancarEmMinhas, setLancarEmMinhas] = useState(true);
   const [forma, setForma] = useState<Forma>("enviado");
   const [meio, setMeio] = useState<Meio>("dinheiro");
   const [descricao, setDescricao] = useState("");
@@ -277,7 +283,7 @@ function FormAjuda({ dataPadrao, fechar, salvar }: { dataPadrao: string; fechar:
     <Folha titulo="Informar ajuda para a Casa" fechar={fechar} salvar={async () => {
       const v = validar(descricao || (forma === "enviado" ? "Ajuda" : ""), valor, data);
       if (typeof v === "string") return v;
-      await salvar({ forma, meio, descricao: descricao.trim() || "Ajuda", valor: v, data });
+      await salvar({ forma, meio, descricao: descricao.trim() || "Ajuda", valor: v, data, lancarEmMinhas });
     }}>
       <Segmento rotulo="Como ajudou" valor={forma} mudar={setForma} opcoes={[["enviado", "Enviei para a Casa"], ["pago_direto", "Paguei uma despesa"]]} />
       <Segmento rotulo="Forma" valor={meio} mudar={setMeio} opcoes={[["dinheiro", "Dinheiro"], ["beneficio", "VR / VA"]]} />
@@ -286,7 +292,11 @@ function FormAjuda({ dataPadrao, fechar, salvar }: { dataPadrao: string; fechar:
         <input id="c-desc" value={descricao} maxLength={80} onChange={(e) => setDescricao(e.target.value)} placeholder={forma === "pago_direto" ? "Ex.: Mercado do mês" : "Ex.: Ajuda fixa"} />
       </label>
       <CamposValor valor={valor} setValor={setValor} data={data} setData={setData} />
-      <p className="nota">{forma === "pago_direto" ? "A despesa entra na Casa como paga por você. " : ""}Seus pais confirmam quando virem.</p>
+      <label className="campo marcar" htmlFor="c-minhas">
+        <input id="c-minhas" type="checkbox" checked={lancarEmMinhas} onChange={(e) => setLancarEmMinhas(e.target.checked)} />
+        Lançar também como saída em Minhas
+      </label>
+      <p className="nota">{forma === "pago_direto" ? "A despesa entra na Casa como paga por você. " : ""}Seus pais confirmam quando virem. Desmarque se você já lançou esse valor em Minhas.</p>
     </Folha>
   );
 }

@@ -65,3 +65,19 @@ export function gerarParcelas(primeiroVencimento: string, diaVencimento: number,
   }
   return lista;
 }
+
+/**
+ * Datas a gravar para um lançamento de uma só vez (não parcelado).
+ * No crédito, `data` é o vencimento da fatura e `dataCompra` guarda o dia da compra;
+ * fora do crédito, `data` é o próprio dia e não há data de compra.
+ */
+export function datasDoLancamento(
+  diaDigitado: string,
+  credito: boolean,
+  cartao?: Pick<Cartao, "diaFechamento" | "diaVencimento">,
+): { data: string; dataCompra: string | null } {
+  if (credito && cartao?.diaFechamento && cartao.diaVencimento) {
+    return { data: vencimentoDaCompra(diaDigitado, cartao.diaFechamento, cartao.diaVencimento), dataCompra: diaDigitado };
+  }
+  return { data: diaDigitado, dataCompra: null };
+}

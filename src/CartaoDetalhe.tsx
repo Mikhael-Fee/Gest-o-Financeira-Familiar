@@ -31,7 +31,8 @@ export function CartaoDetalhe({ repo, cartao, cartoes, trocar, mesInicial, nomeD
 
   useEffect(() => {
     let vivo = true;
-    repo.listarIntervalo(inicio, somarMes(inicio, N + 11))
+    // Até 5 anos à frente: parcelamentos longos (até 48x) aparecem inteiros em "Parcelamentos".
+    repo.listarIntervalo(inicio, somarMes(inicio, N + 59))
       .then((l) => vivo && setLista(l.filter((x) => x.cartaoId === cartao.id)))
       .catch((e) => vivo && (setErro(e instanceof Error ? e.message : "Erro ao carregar."), setLista([])));
     return () => { vivo = false; };

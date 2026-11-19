@@ -19,6 +19,9 @@ export interface RepositorioCasa {
   salvarCombinado(c: Combinado): Promise<void>;
 }
 
+type LinhaDespesa = { id: string; data: string; descricao: string; valor_centavos: number; meio: Despesa["meio"]; status: Despesa["status"]; paga_por: string | null };
+const daDespesa = (r: LinhaDespesa): Despesa => ({ id: r.id, data: r.data, descricao: r.descricao, valor: r.valor_centavos, meio: r.meio, status: r.status, pagaPor: r.paga_por });
+
 const falhou = (msg: string) => (r: { error: unknown }) => {
   if (r.error) throw new Error(msg);
 };
@@ -27,15 +30,17 @@ export const repositorioCasaSupabase: RepositorioCasa = {
   async carregar(mes) {
     const de = `${mes}-01`;
     const ate = `${somarMes(mes, 1)}-01`;
-    const [a, d, c] = await Promise.all([
+    const [a, d, c, at] = await Promise.all([
       supabase!.from("casa_ajudas").select("id, data, quem, descricao, valor_centavos, meio, forma, status, despesa_id").gte("data", de).lt("data", ate).order("data", { ascending: false }),
       supabase!.from("casa_despesas").select("id, data, descricao, valor_centavos, meio, status, paga_por").gte("data", de).lt("data", ate).order("data"),
       supabase!.from("combinados").select("filho, dinheiro_centavos, beneficio_nome, beneficio_centavos"),
+      supabase!.from("casa_despesas").select("id, data, descricao, valor_centavos, meio, status, paga_por").eq("status", "a_pagar").lt("data", de).order("data"),
     ]);
-    if (a.error || d.error || c.error) throw new Error("Não foi possível carregar a Casa.");
+    if (a.error || d.error || c.error || at.error) throw new Error("Não foi possível carregar a Casa.");
     return {
       ajudas: a.data.map((r) => ({ id: r.id, data: r.data, quem: r.quem, descricao: r.descricao, valor: r.valor_centavos, meio: r.meio, forma: r.forma, status: r.status, despesaId: r.despesa_id })),
-      despesas: d.data.map((r) => ({ id: r.id, data: r.data, descricao: r.descricao, valor: r.valor_centavos, meio: r.meio, status: r.status, pagaPor: r.paga_por })),
+      despesas: d.data.map(daDespesa),
+      atrasadas: at.data.map(daDespesa),
       combinados: c.data.map((r) => ({ filho: r.filho, dinheiro: r.dinheiro_centavos, beneficioNome: r.beneficio_nome, beneficio: r.beneficio_centavos })),
     };
   },
@@ -88,6 +93,7 @@ export function repositorioCasaDemo(inicial: DadosCasa): RepositorioCasa {
       return {
         ajudas: d.ajudas.filter((a) => a.data.startsWith(mes)).sort((a, b) => b.data.localeCompare(a.data)),
         despesas: d.despesas.filter((x) => x.data.startsWith(mes)).sort((a, b) => a.data.localeCompare(b.data)),
+        atrasadas: d.despesas.filter((x) => x.status === "a_pagar" && x.data.slice(0, 7) < mes).sort((a, b) => a.data.localeCompare(b.data)),
         combinados: [...d.combinados],
       };
     },
