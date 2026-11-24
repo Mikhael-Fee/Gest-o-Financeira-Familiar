@@ -4,7 +4,7 @@ import { reais } from "./dinheiro";
 import type { Repositorio } from "./repositorio";
 import { nomeCartao, type Cartao } from "./cartoes";
 import { FILTRO_VAZIO, filtrar, porMes, type Filtro } from "./busca";
-import { comCor, corCategoria } from "./cores";
+import { comCor, corCategoria, iconeCategoria } from "./cores";
 import { Segmento } from "./Folha";
 
 const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
@@ -102,7 +102,7 @@ export function Busca({ repo, cartoes, versao, voltar, abrir }: {
                   return (
                     <li key={l.id}>
                       <button className="item" onClick={() => abrir(l)}>
-                        <span className={`icone ${l.tipo} ${l.meio}${l.tipo === "saida" && l.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(l.categoria))} aria-hidden="true">{l.categoria.slice(0, 2)}</span>
+                        <span className={`icone ${l.tipo} ${l.meio}${l.tipo === "saida" && l.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(l.categoria))} aria-hidden="true"><span className="emoji">{iconeCategoria(l.categoria)}</span></span>
                         <span className="texto">
                           <b>{l.descricao}</b>
                           <span>{l.categoria} · {dataCurta(l.data)}{c ? ` · ${c.banco}` : ""}{l.parcelas && l.parcelas > 1 ? ` · ${l.parcela}/${l.parcelas}` : ""}{l.meio === "beneficio" ? " · VR/VA" : ""}</span>

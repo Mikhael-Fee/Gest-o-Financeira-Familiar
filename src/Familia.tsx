@@ -3,7 +3,7 @@ import { hojeISO, mesDe, nomeMes, somarMes } from "./lancamentos";
 import { reais } from "./dinheiro";
 import { NIVEIS, type Nivel, type RepositorioPrivacidade, type VisaoPessoa } from "./privacidade";
 import { ROTULO_PAPEL, type Perfil } from "./tipos";
-import { comCor, corCategoria } from "./cores";
+import { comCor, corCategoria, iconeCategoria } from "./cores";
 
 export function Familia({ repo, eu, familia }: { repo: RepositorioPrivacidade; eu: Perfil; familia: Perfil[] }) {
   const [mes, setMes] = useState(() => mesDe(hojeISO()));
@@ -99,7 +99,7 @@ export function Familia({ repo, eu, familia }: { repo: RepositorioPrivacidade; e
                 {v.lancamentos.length === 0 && <li className="nota">Nenhum lançamento neste mês.</li>}
                 {v.lancamentos.map((l) => (
                   <li key={l.id}>
-                    <span className={`icone ${l.tipo} ${l.meio}${l.tipo === "saida" && l.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(l.categoria))} aria-hidden="true">{l.categoria.slice(0, 2)}</span>
+                    <span className={`icone ${l.tipo} ${l.meio}${l.tipo === "saida" && l.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(l.categoria))} aria-hidden="true"><span className="emoji">{iconeCategoria(l.categoria)}</span></span>
                     <span className="texto"><b>{l.descricao}</b><span>{l.categoria} · {l.data.slice(8, 10)}/{l.data.slice(5, 7)}{l.meio === "beneficio" ? " · VR/VA" : ""}</span></span>
                     <span className={`valor ${l.tipo}`}>{l.tipo === "entrada" ? "+" : "−"}{reais(l.valor)}</span>
                   </li>

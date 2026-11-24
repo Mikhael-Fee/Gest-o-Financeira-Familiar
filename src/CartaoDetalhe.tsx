@@ -5,7 +5,7 @@ import type { Repositorio } from "./repositorio";
 import { nomeCartao, type Cartao } from "./cartoes";
 import { faturasDoCartao, parcelamentosAbertos } from "./resumo";
 import { Colunas, mesCurto } from "./Resumo";
-import { comCor, corBanco, corCategoria } from "./cores";
+import { comCor, corBanco, corCategoria, iconeCategoria } from "./cores";
 
 const dataCurta = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const mesSo = (m: string) => nomeMes(m).split(" ")[0].toLowerCase();
@@ -104,7 +104,7 @@ export function CartaoDetalhe({ repo, cartao, cartoes, trocar, mesInicial, nomeD
             {credito.map((x) => (
               <li key={x.id}>
                 <button className="item" onClick={() => abrir(x)}>
-                  <span className="icone com-cor" style={comCor(corCategoria(x.categoria))} aria-hidden="true">{x.categoria.slice(0, 2)}</span>
+                  <span className="icone com-cor" style={comCor(corCategoria(x.categoria))} aria-hidden="true"><span className="emoji">{iconeCategoria(x.categoria)}</span></span>
                   <span className="texto">
                     <b>{x.descricao}</b>
                     <span>{x.categoria}{x.dataCompra ? ` · comprou ${dataCurta(x.dataCompra)}` : ""}{x.parcelas && x.parcelas > 1 ? ` · ${x.parcela}/${x.parcelas}` : ""}{x.deQuem ? ` · de ${nomeDe(x.deQuem)}` : ""}</span>

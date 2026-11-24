@@ -9,7 +9,7 @@ import { hojeISO, mesDe, nomeMes } from "./lancamentos";
 import type { NovoRecorrente, Recorrente } from "./fixos";
 import { FIXO_NOVO, FormFixo, descreverFixo } from "./Fixos";
 import { TrocarSenha } from "./Senha";
-import { comCor, corBanco, corCategoria } from "./cores";
+import { comCor, corBanco, corCategoria, iconeCategoria } from "./cores";
 
 type CartaoEditavel = Omit<Cartao, "id"> & { id?: string };
 
@@ -132,7 +132,7 @@ export function Ajustes({ repo, perfil, familia, sair, demo }: { repo: Repositor
           {fixos.map((f) => (
             <li key={f.id}>
               <button type="button" className="item" onClick={() => setFixoEditando(f)}>
-                <span className={`icone ${f.tipo} ${f.meio}${f.tipo === "saida" && f.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(f.categoria))} aria-hidden="true">{f.categoria.slice(0, 2)}</span>
+                <span className={`icone ${f.tipo} ${f.meio}${f.tipo === "saida" && f.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(f.categoria))} aria-hidden="true"><span className="emoji">{iconeCategoria(f.categoria)}</span></span>
                 <span className="texto"><b>{f.descricao}</b><span>{descreverFixo(f, cartoes ?? [])}</span></span>
                 <span className={`valor ${f.tipo}`}>{f.tipo === "entrada" ? "+" : "−"}{reais(f.valor)}</span>
               </button>

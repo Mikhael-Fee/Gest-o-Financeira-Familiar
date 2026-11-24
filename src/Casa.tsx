@@ -1,3 +1,4 @@
+import { iconeDespesaCasa } from "./cores";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { hojeISO, mesDe, nomeMes, somarMes, type Meio } from "./lancamentos";
 import { lerValor, reais } from "./dinheiro";
@@ -150,7 +151,7 @@ export function Casa({ repo, eu, familia, pessoal }: { repo: RepositorioCasa; eu
               {[...(dados.atrasadas ?? []), ...dados.despesas].map((d) => (
                 <li key={d.id}>
                   <button className="item" disabled={!gerencia} onClick={() => setAberto({ tipo: "despesa", despesa: d })}>
-                    <span className={`icone ${d.meio}`} aria-hidden="true">{d.descricao.slice(0, 2)}</span>
+                    <span className={`icone ${d.meio}`} aria-hidden="true"><span className="emoji">{iconeDespesaCasa(d.descricao)}</span></span>
                     <span className="texto">
                       <b>{d.descricao}</b>
                       <span>{dataCurta(d.data)}{mesDe(d.data) < mes ? `/${d.data.slice(2, 4)} · atrasada` : ""} · {d.meio === "beneficio" ? "VR/VA" : "dinheiro"}</span>
@@ -235,6 +236,7 @@ export function Casa({ repo, eu, familia, pessoal }: { repo: RepositorioCasa; eu
         <FormCombinado filho={aberto.filho} atual={aberto.atual} fechar={() => setAberto(null)}
           salvar={(c) => feito("Combinado salvo", () => repo.salvarCombinado(c))} />
       )}
+      {gerencia && <button className="btn flutuante" onClick={() => setAberto({ tipo: "despesa" })}>+ Despesa</button>}
       {aviso && <div className="aviso" role="status">{aviso}</div>}
     </>
   );

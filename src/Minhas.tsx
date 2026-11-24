@@ -11,7 +11,7 @@ import { CartaoDetalhe } from "./CartaoDetalhe";
 import { Busca } from "./Busca";
 import { lancamentoDoFixo, pendentesDoMes, saldoAcumulado, situacaoLimites, valorSugerido, type HistoricoFixos, type Limites, type Recorrente } from "./fixos";
 import { gastosPorCategoria } from "./resumo";
-import { comCor, corBanco, corCategoria } from "./cores";
+import { comCor, corBanco, corCategoria, iconeCategoria } from "./cores";
 
 type ParaCasa = Forma | "nao";
 type Como = "dinheiro" | "debito" | "credito" | "beneficio";
@@ -164,64 +164,6 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         )}
       </section>
 
-      {temBeneficio && (
-        <section className="painel beneficio">
-          <div className="cabeca"><h2>VR / VA</h2><span className="nota">Não é dinheiro em conta</span></div>
-          <div className="tres">
-            <div><span className="mini">Recebi</span><b>{reais(r.beneficioRecebido)}</b></div>
-            <div><span className="mini">Usei ou enviei</span><b>{reais(r.beneficioGasto)}</b></div>
-            <div><span className="mini">Sobrou</span><b>{reais(r.beneficioSobra)}</b></div>
-          </div>
-        </section>
-      )}
-
-      {alertas.length > 0 && (
-        <section className="painel">
-          <h2>Limites</h2>
-          <ul className="lista">
-            {alertas.map((a) => (
-              <li key={a.categoria}>
-                <span className={`estado-icone ${a.estado}`} aria-hidden="true">{a.estado === "passou" ? "!" : "⚠"}</span>
-                <span className="texto">
-                  <b>{a.categoria}</b>
-                  <span>{a.estado === "passou" ? `Passou ${reais(a.gasto - a.limite)} do limite` : `Perto do limite: ${Math.round(a.parte * 100)}% usado`}</span>
-                </span>
-                <span className="fim"><b className="valor">{reais(a.gasto)}</b><span className="mini-cinza">de {reais(a.limite)}</span></span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {pendentes.length > 0 && (
-        <section className="painel">
-          <div className="cabeca">
-            <h2>Fixos de {nomeMes(mes).split(" ")[0].toLowerCase()}</h2>
-            {pendentes.length > 1 && <button className="btn pequeno" onClick={() => lancarFixos(pendentes)}>Lançar todos</button>}
-          </div>
-          <ul className="lista">
-            {pendentes.map((f) => {
-              const c = cartoes.find((x) => x.id === f.cartaoId);
-              const sug = valorSugerido(f, historico, mes);
-              return (
-                <li key={f.id}>
-                  <button className="item" onClick={() => setEditando(lancamentoDoFixo(f, mes, c, sug.valor))}>
-                    <span className={`icone ${f.tipo} ${f.meio}${f.tipo === "saida" && f.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(f.categoria))} aria-hidden="true">{f.categoria.slice(0, 2)}</span>
-                    <span className="texto">
-                      <b>{f.descricao}</b>
-                      <span>dia {f.dia}{sug.media ? ` · média de ${sug.meses} ${sug.meses === 1 ? "mês" : "meses"}` : ""}{f.pagamento ? ` · ${c ? c.banco : ""} ${f.pagamento === "credito" ? "crédito" : "débito"}` : f.meio === "beneficio" ? " · VR/VA" : ""}</span>
-                    </span>
-                    <span className={`valor ${f.tipo}`}>{f.tipo === "entrada" ? "+" : "−"}{reais(sug.valor)}</span>
-                  </button>
-                  <button className="btn pequeno fantasma" onClick={() => lancarFixos([f])}>Lançar</button>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="nota">Toque no nome para mudar o valor antes de lançar. Os fixos ficam em Ajustes.</p>
-        </section>
-      )}
-
       {(pendencias > 0) && (
         <section className="painel">
           <h2>Pendências</h2>
@@ -281,6 +223,64 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         </section>
       )}
 
+      {temBeneficio && (
+        <section className="painel beneficio">
+          <div className="cabeca"><h2>VR / VA</h2><span className="nota">Não é dinheiro em conta</span></div>
+          <div className="tres">
+            <div><span className="mini">Recebi</span><b>{reais(r.beneficioRecebido)}</b></div>
+            <div><span className="mini">Usei ou enviei</span><b>{reais(r.beneficioGasto)}</b></div>
+            <div><span className="mini">Sobrou</span><b>{reais(r.beneficioSobra)}</b></div>
+          </div>
+        </section>
+      )}
+
+      {alertas.length > 0 && (
+        <section className="painel">
+          <h2>Limites</h2>
+          <ul className="lista">
+            {alertas.map((a) => (
+              <li key={a.categoria}>
+                <span className={`estado-icone ${a.estado}`} aria-hidden="true">{a.estado === "passou" ? "!" : "⚠"}</span>
+                <span className="texto">
+                  <b>{a.categoria}</b>
+                  <span>{a.estado === "passou" ? `Passou ${reais(a.gasto - a.limite)} do limite` : `Perto do limite: ${Math.round(a.parte * 100)}% usado`}</span>
+                </span>
+                <span className="fim"><b className="valor">{reais(a.gasto)}</b><span className="mini-cinza">de {reais(a.limite)}</span></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {pendentes.length > 0 && (
+        <section className="painel">
+          <div className="cabeca">
+            <h2>Fixos de {nomeMes(mes).split(" ")[0].toLowerCase()}</h2>
+            {pendentes.length > 1 && <button className="btn pequeno" onClick={() => lancarFixos(pendentes)}>Lançar todos</button>}
+          </div>
+          <ul className="lista">
+            {pendentes.map((f) => {
+              const c = cartoes.find((x) => x.id === f.cartaoId);
+              const sug = valorSugerido(f, historico, mes);
+              return (
+                <li key={f.id}>
+                  <button className="item" onClick={() => setEditando(lancamentoDoFixo(f, mes, c, sug.valor))}>
+                    <span className={`icone ${f.tipo} ${f.meio}${f.tipo === "saida" && f.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(f.categoria))} aria-hidden="true"><span className="emoji">{iconeCategoria(f.categoria)}</span></span>
+                    <span className="texto">
+                      <b>{f.descricao}</b>
+                      <span>dia {f.dia}{sug.media ? ` · média de ${sug.meses} ${sug.meses === 1 ? "mês" : "meses"}` : ""}{f.pagamento ? ` · ${c ? c.banco : ""} ${f.pagamento === "credito" ? "crédito" : "débito"}` : f.meio === "beneficio" ? " · VR/VA" : ""}</span>
+                    </span>
+                    <span className={`valor ${f.tipo}`}>{f.tipo === "entrada" ? "+" : "−"}{reais(sug.valor)}</span>
+                  </button>
+                  <button className="btn pequeno fantasma" onClick={() => lancarFixos([f])}>Lançar</button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="nota">Toque no nome para mudar o valor antes de lançar. Os fixos ficam em Ajustes.</p>
+        </section>
+      )}
+
       {(cartoesCredito.length > 0 || escondidos > 0) && (
         <section className="painel">
           <h2>Cartões em {nomeMes(mes).split(" ")[0].toLowerCase()}</h2>
@@ -328,7 +328,6 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
           <h2>Lançamentos</h2>
           <div className="cabeca-botoes">
             <button className="btn pequeno fantasma" onClick={() => setBuscando(true)} aria-label="Buscar lançamentos">Buscar</button>
-            <button className="btn pequeno" onClick={() => novo()}>+ Lançar</button>
           </div>
         </div>
         {erro && <p className="erro" role="alert">{erro}</p>}
@@ -351,7 +350,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
             return (
               <li key={l.id}>
                 <button className="item" onClick={() => setEditando(l)}>
-                  <span className={`icone ${l.tipo} ${l.meio}${l.tipo === "saida" && l.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(l.categoria))} aria-hidden="true">{l.categoria.slice(0, 2)}</span>
+                  <span className={`icone ${l.tipo} ${l.meio}${l.tipo === "saida" && l.meio === "dinheiro" ? " com-cor" : ""}`} style={comCor(corCategoria(l.categoria))} aria-hidden="true"><span className="emoji">{iconeCategoria(l.categoria)}</span></span>
                   <span className="texto">
                     <b>{l.descricao}</b>
                     <span>{l.categoria} · {dataCurta(l.data)}{extra.length ? ` · ${extra.join(" · ")}` : ""}</span>
@@ -454,6 +453,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
         <FormCartao eu={perfil} familia={familia} inicial={CARTAO_NOVO} voltar={() => setNovoCartao(false)}
           salvar={async (c) => { await repo.salvarCartao(c); setNovoCartao(false); setAviso("Cartão salvo"); await carregar(); }} />
       )}
+      {!buscando && <button className="btn flutuante" onClick={() => novo()}>+ Lançar</button>}
       {aviso && <div className="aviso" role="status">{aviso}</div>}
     </>
   );

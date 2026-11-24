@@ -7,7 +7,7 @@ import type { Despesa } from "./casa";
 import { compromissos, gastosPorCategoria, maioresGastos, sobraPorMes } from "./resumo";
 import { situacaoLimites, type Limites } from "./fixos";
 import { FormLimites } from "./Fixos";
-import { comCor, corBanco, corCategoria } from "./cores";
+import { comCor, corBanco, corCategoria, iconeCategoria } from "./cores";
 import { nomeCartao, type Cartao } from "./cartoes";
 
 export const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -140,7 +140,7 @@ export function Resumo({ repo, casa }: { repo: Repositorio; casa: RepositorioCas
               <ol className="lista">
                 {maiores.map((l) => (
                   <li key={l.id}>
-                    <span className="icone com-cor" style={comCor(corCategoria(l.categoria))} aria-hidden="true">{l.categoria.slice(0, 2)}</span>
+                    <span className="icone com-cor" style={comCor(corCategoria(l.categoria))} aria-hidden="true"><span className="emoji">{iconeCategoria(l.categoria)}</span></span>
                     <span className="texto"><b>{l.descricao}</b><span>{l.categoria} · {dataCurta(l.data)}{l.parcelas && l.parcelas > 1 ? ` · parcela ${l.parcela}/${l.parcelas}` : ""}</span></span>
                     <span className="valor">{reais(l.valor)}</span>
                   </li>
