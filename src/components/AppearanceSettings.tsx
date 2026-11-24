@@ -53,6 +53,15 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, [value]);
   useEffect(() => {
     const viewport = window.visualViewport;
+    let focusFrame = 0;
+    const revealFocus = () => {
+      cancelAnimationFrame(focusFrame);
+      focusFrame = requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && active.closest("dialog[open]"))
+          active.scrollIntoView({ block: "nearest" });
+      });
+    };
     const update = () => {
       document.documentElement.style.setProperty(
         "--viewport-height",
@@ -61,16 +70,17 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       document.documentElement.dataset.compactViewport = String(
         (viewport?.height ?? window.innerHeight) < 540,
       );
-      const active = document.activeElement;
-      if (active instanceof HTMLElement && active.closest("dialog[open]"))
-        active.scrollIntoView({ block: "nearest" });
+      revealFocus();
     };
     update();
     viewport?.addEventListener("resize", update);
     window.addEventListener("resize", update);
+    document.addEventListener("focusin", revealFocus);
     return () => {
+      cancelAnimationFrame(focusFrame);
       viewport?.removeEventListener("resize", update);
       window.removeEventListener("resize", update);
+      document.removeEventListener("focusin", revealFocus);
     };
   }, []);
   return (

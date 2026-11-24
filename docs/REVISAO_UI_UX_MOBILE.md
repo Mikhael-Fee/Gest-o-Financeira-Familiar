@@ -101,7 +101,8 @@ Medições finais: [arquivo JSON](assets/ui-ux/medidas-depois.json). Fonte míni
 - **210/210 testes financeiros/de domínio**, em 24 arquivos, aprovados novamente. Incluem PostgreSQL/PGlite, precisão em centavos, pagamentos, atribuição, históricos, permissões e regressões anteriores.
 - Contraste: **82/82 combinações aprovadas**.
 - **79/79 testes de navegador aprovados**, incluindo 12 novos casos (seis em cada projeto desktop/mobile). Autenticação, PWA offline, erros preservando formulário, compra parcelada, VA, pagamento parcial, contribuição/Casa, histórico, anulação, orçamentos, metas, salário, gráficos, teclado e saída foram exercitados. O teste de foco inclui 320 × 430, texto a 200%, menu, formulário e escala visual 2 no Chromium.
-- Varredura visual final e evidência pública serão consolidadas após a conclusão. Houve uma primeira varredura de 380 estados sem violações Axe ou transbordamento antes dos ajustes finais de reflow; ela não substitui a conferência da versão final.
+- Varredura das seis larguras, claro/escuro e texto padrão/maior: **380 estados**, mais **64 verificações em 320 px após o ajuste de reflow**, total de **444 verificações sem violações Axe ou transbordamento horizontal**. [Resumo das evidências](assets/ui-ux/verificacao-visual.json).
+- Orientação horizontal e janela baixa: **844 × 390, 844 × 220 e 320 × 430**, com texto a **200%**, campo focado integralmente dentro do modal e salvamento operável. Os dois testes de navegador que incorporam esses casos passaram após a correção. A altura de 220 px é simulação de área reduzida, não teste de teclado físico/virtual real.
 
 `npm run test:e2e -- --workers=2` inclui autenticação interceptada especificamente na suíte de Auth, demonstração em memória nas demais jornadas e PWA em build. Não confundir essas suítes com a homologação autenticada real. `scripts/verify-ui-browser.mjs`, acionado explicitamente pelo operador com fixture privada, verifica a jornada pública sem interceptar o backend, usando somente a família fictícia da auditoria.
 
@@ -109,7 +110,7 @@ Reproduzir visualmente: iniciar `npm run dev` sem credenciais para demonstraçã
 
 ## 10. Problemas corrigidos durante a verificação
 
-Além da densidade original, corrigimos transbordamento com fonte a 200% em 320 px (cabeçalho, seletor de mês e rótulos longos), foco que escapava do último item do menu modal, rodapé/cabeçalho que ocupavam espaço excessivo em janela baixa, estado visual ambíguo em cobranças inativas e seletores E2E antigos que pressupunham a navegação anterior. Os testes financeiros mantiveram as expectativas; as adaptações de navegação aguardam título/rota para evitar corridas.
+Além da densidade original, corrigimos transbordamento com fonte a 200% em 320 px (cabeçalho, seletor de mês e rótulos longos), foco que escapava do último item do menu modal, rodapé/cabeçalho que ocupavam espaço excessivo em janela baixa, rolagem que cortava parte do campo focado com texto ampliado, quebra de palavra no botão Adicionar, estado visual ambíguo em cobranças inativas e seletores E2E antigos que pressupunham a navegação anterior. Em janela baixa, o modal reduz o espaço reservado para barras fixas e revela o campo após o foco e a mudança da área visual. Os testes financeiros mantiveram as expectativas; as adaptações de navegação aguardam título/rota para evitar corridas.
 
 ## 11. Limites e pendências
 
@@ -127,7 +128,7 @@ Validação: testes E2E existentes e novos `helpers.ts`/`mobile-ux.spec.ts`; scr
 
 ## 13. Histórico, PR e commit
 
-[PR #1](https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/pull/1), preservando todos os commits anteriores. Commit de interface e checks serão registrados após versionamento. Não houve merge na main.
+[PR #1](https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/pull/1), preservando todos os commits anteriores. Interface em [`0f7d9b0`](https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/commit/0f7d9b0f707edae78db5db7b00e110b0e7dda90b), com [CI aprovado](https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/45413022339). A correção adicional de foco em janela baixa aguarda seu próprio CI antes da publicação. Não houve merge na main.
 
 ## 14. Homologação e disponibilidade
 

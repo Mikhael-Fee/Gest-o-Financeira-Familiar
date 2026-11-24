@@ -1858,3 +1858,6 @@ dialog form > .primary {
 :root[data-compact-viewport="true"] .form-footer {
   position: static;
 }
+:root[data-compact-viewport="true"] dialog {
+  scroll-padding: 0.5rem;
+}

@@ -229,6 +229,35 @@ test("menu prende e devolve o foco; ampliação 200% e paisagem mantêm campos o
     .getByRole("button", { name: "Salvar com segurança", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  for (const viewport of [
+    { width: 844, height: 390 },
+    { width: 844, height: 220 },
+  ]) {
+    await page.setViewportSize(viewport);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    await openExpense(page);
+    await page.getByLabel("Valor (R$)", { exact: true }).fill("10");
+    const description = page.getByLabel("Descrição / apelido");
+    await description.fill("Orientação horizontal e janela baixa fictícias");
+    await description.focus();
+    await expect
+      .poll(() =>
+        description.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          const dialog = element.closest("dialog")!.getBoundingClientRect();
+          return (
+            bounds.top >= Math.max(0, dialog.top) &&
+            bounds.bottom <= Math.min(visualViewport!.height, dialog.bottom) - 1
+          );
+        }),
+      )
+      .toBe(true);
+    await save(page);
+  }
   const cdp = await context.newCDPSession(page);
   await cdp.send("Emulation.setPageScaleFactor", { pageScaleFactor: 2 });
   expect(await page.evaluate(() => visualViewport!.scale)).toBe(2);

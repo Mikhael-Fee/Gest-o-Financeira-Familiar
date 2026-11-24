@@ -1,0 +1,69 @@
+{
+  "interfaceCommit": "0f7d9b0f707edae78db5db7b00e110b0e7dda90b",
+  "date": "2026-11-24",
+  "data": "demonstração fictícia em memória",
+  "widths": [
+    320,
+    360,
+    390,
+    430,
+    768,
+    1440
+  ],
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "text": [
+    "standard",
+    "large"
+  ],
+  "matrixChecks": 380,
+  "reflowRecheck": 64,
+  "totalChecks": 444,
+  "axeViolations": 0,
+  "horizontalOverflow": 0,
+  "checksByWidth": {
+    "320": 128,
+    "360": 64,
+    "390": 64,
+    "430": 64,
+    "768": 64,
+    "1440": 60
+  },
+  "orientation": [
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "textPercent": 200,
+      "reflow": true,
+      "focusedFieldVisible": true,
+      "saveWorks": true,
+      "physicalKeyboard": false
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 220
+      },
+      "textPercent": 200,
+      "reflow": true,
+      "focusedFieldVisible": true,
+      "saveWorks": true,
+      "physicalKeyboard": false
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 430
+      },
+      "textPercent": 200,
+      "reflow": true,
+      "focusedFieldVisible": true,
+      "saveWorks": true,
+      "physicalKeyboard": false
+    }
+  ]
+}
