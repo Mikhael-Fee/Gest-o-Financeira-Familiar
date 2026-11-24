@@ -1,0 +1,81 @@
+{
+  "commit": "7aa1e12d393ca27cb3d07fb8320f6ef30fb9d37f",
+  "journey": {
+    "origin": "https://entre-nos-homologacao.netlify.app",
+    "month": "2026-11",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "fictionalOnly": true,
+    "backendMocked": false,
+    "login": true,
+    "expense": true,
+    "income": true,
+    "payExisting": true,
+    "invoice": true,
+    "loanCalendar": true,
+    "houseContribution": true,
+    "history": true,
+    "correction": true,
+    "logout": true,
+    "bankExpectedCents": 13500,
+    "bankVerified": true,
+    "axeViolations": 0,
+    "reflow": true
+  },
+  "isolation": [
+    {
+      "member": 1,
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "authenticated": true,
+      "valuesVerified": true,
+      "privacy": true,
+      "axeViolations": 0,
+      "logoutClearsData": true
+    },
+    {
+      "member": 2,
+      "viewport": {
+        "width": 393,
+        "height": 851
+      },
+      "authenticated": true,
+      "valuesVerified": true,
+      "privacy": true,
+      "axeViolations": 0,
+      "logoutClearsData": true
+    },
+    {
+      "member": 3,
+      "viewport": {
+        "width": 393,
+        "height": 851
+      },
+      "authenticated": true,
+      "valuesVerified": true,
+      "privacy": true,
+      "axeViolations": 0,
+      "logoutClearsData": true
+    },
+    {
+      "demo": true
+    }
+  ],
+  "admin": {
+    "public_login": true,
+    "personal": true,
+    "house": true,
+    "settings": true,
+    "invite_created": true,
+    "logout_and_login": true,
+    "memory_session_reload": true,
+    "backend_mocked": false
+  },
+  "date": "2026-11-24",
+  "ci": "https://github.com/Mikhael-Fee/Gest-o-Financeira-Familiar/actions/runs/45414318967",
+  "deploy": "6b059f994ac1f4520026752a"
+}

@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Escolha **Explorar demonstração**. Ela não precisa de Supabase, não grava no localStorage e descarta alterações ao sair. Dados autenticados usam PostgreSQL/Supabase via comandos transacionais e RLS; não há fallback silencioso para demonstração depois do login.
+Escolha **Explorar demonstração**. Ela não precisa de Supabase, não grava dados financeiros no localStorage e descarta alterações ao sair. Somente preferências de aparência permanecem no aparelho. Dados autenticados usam PostgreSQL/Supabase via comandos transacionais e RLS; não há fallback silencioso para demonstração depois do login.
 
 Para integrar um Supabase de desenvolvimento, siga [DEPLOY.md](docs/DEPLOY.md), copie `.env.example` para `.env.local` e use somente URL/chave publicável no frontend. Credenciais administrativas ficam exclusivamente no servidor. Não executar comandos remotos/deploy sem autorização.
 
