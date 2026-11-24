@@ -1,3 +1,8 @@
+import {
+  AppearanceProvider,
+  applyAppearance,
+  readAppearance,
+} from "./components/AppearanceSettings";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -8,11 +13,14 @@ import "@fontsource/dm-sans/latin-600.css";
 import "@fontsource/manrope/latin-600.css";
 import "@fontsource/manrope/latin-700.css";
 import "./style.css";
+applyAppearance(readAppearance());
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <AppearanceProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </AppearanceProvider>
   </React.StrictMode>,
 );
 if ("serviceWorker" in navigator && import.meta.env.PROD)

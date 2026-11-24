@@ -1,5 +1,7 @@
 # Validação executada — 13/11/2026
 
+> Revisão de interface (17–24/11/2026): [UI/UX mobile e acessibilidade](REVISAO_UI_UX_MOBILE.md), com 210 testes financeiros, 79 Playwright, contraste e capturas antes/depois. Os resultados de domínio/RLS históricos abaixo continuam separados da validação visual.
+
 > Evidências mais recentes (17/11/2026): [Auditoria do núcleo financeiro](AUDITORIA_NUCLEO_FINANCEIRO.md). Inclui homologação autenticada concluída, publicação `7127db1`, 210 testes, 67 Playwright e 39 pgTAP locais/remotos. Os registros anteriores abaixo são históricos.
 
 > Registro histórico desta etapa. A continuação de 16/11 concluiu a homologação autenticada e criou o administrador; consulte [o relatório final atualizado](CONCLUSAO_HOMOLOGACAO.md). Os bloqueios e contagens abaixo descrevem as verificações anteriores.

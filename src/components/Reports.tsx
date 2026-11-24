@@ -82,97 +82,101 @@ export default function Reports({
             ? "Seu consumo, dinheiro e planejamento em gráficos."
             : "Despesas e contribuições compartilhadas. Rendas e saldos particulares ficam no espaço pessoal."),
       )}
-      <section
-        className="panel report-filters"
-        aria-label="Filtros dos gráficos de consumo"
-      >
-        <h3>Entenda seus gastos</h3>
-        <p>
-          Os filtros abaixo valem para evolução, categorias e meios de
-          pagamento.
-        </p>
-        <div className="report-filter-grid">
-          <Field label="Janela de comparação">
-            <select
-              value={months}
-              onChange={(e) => setMonths(Number(e.target.value))}
-            >
-              <option value={6}>6 meses até o período escolhido</option>
-              <option value={12}>12 meses até o período escolhido</option>
-            </select>
-          </Field>
-          <Field label="Categoria do consumo">
-            <select
-              value={filters.category}
-              onChange={(e) => setFilter("category", e.target.value)}
-            >
-              <option value="all">Todas as categorias</option>
-              {categoryOptions(all.map((r) => r.entry)).map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Fonte do consumo">
-            <select
-              value={filters.source}
-              onChange={(e) => setFilter("source", e.target.value)}
-            >
-              <option value="all">Todos os meios</option>
-              <optgroup label="Suas contas e benefícios">
-                {state.accounts
-                  .filter((a) => a.owner_id === ownerId)
-                  .map((a) => (
-                    <option key={a.id} value={"account:" + a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-              </optgroup>
-              <optgroup label="Cartões autorizados">
-                {state.cards
-                  .filter(
-                    (c) =>
-                      c.owner_id === ownerId || c.authorized.includes(ownerId),
-                  )
-                  .map((c) => (
-                    <option key={c.id} value={"card:" + c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </optgroup>
-            </select>
-          </Field>
-          {!personal && (
-            <Field label="Pessoa que consumiu">
+      <details className="detail-disclosure">
+        <summary>Filtrar relatórios</summary>{" "}
+        <section
+          className="panel report-filters"
+          aria-label="Filtros dos gráficos de consumo"
+        >
+          <h3>Entenda seus gastos</h3>
+          <p>
+            Os filtros abaixo valem para evolução, categorias e meios de
+            pagamento.
+          </p>
+          <div className="report-filter-grid">
+            <Field label="Janela de comparação">
               <select
-                value={filters.personId}
-                onChange={(e) => setFilter("personId", e.target.value)}
+                value={months}
+                onChange={(e) => setMonths(Number(e.target.value))}
               >
-                <option value="all">Todos os membros</option>
-                {state.profiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
+                <option value={6}>6 meses até o período escolhido</option>
+                <option value={12}>12 meses até o período escolhido</option>
+              </select>
+            </Field>
+            <Field label="Categoria do consumo">
+              <select
+                value={filters.category}
+                onChange={(e) => setFilter("category", e.target.value)}
+              >
+                <option value="all">Todas as categorias</option>
+                {categoryOptions(all.map((r) => r.entry)).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
                   </option>
                 ))}
               </select>
             </Field>
+            <Field label="Fonte do consumo">
+              <select
+                value={filters.source}
+                onChange={(e) => setFilter("source", e.target.value)}
+              >
+                <option value="all">Todos os meios</option>
+                <optgroup label="Suas contas e benefícios">
+                  {state.accounts
+                    .filter((a) => a.owner_id === ownerId)
+                    .map((a) => (
+                      <option key={a.id} value={"account:" + a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Cartões autorizados">
+                  {state.cards
+                    .filter(
+                      (c) =>
+                        c.owner_id === ownerId ||
+                        c.authorized.includes(ownerId),
+                    )
+                    .map((c) => (
+                      <option key={c.id} value={"card:" + c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </optgroup>
+              </select>
+            </Field>
+            {!personal && (
+              <Field label="Pessoa que consumiu">
+                <select
+                  value={filters.personId}
+                  onChange={(e) => setFilter("personId", e.target.value)}
+                >
+                  <option value="all">Todos os membros</option>
+                  {state.profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+          </div>
+          {filters.source !== "all" && (
+            <p>
+              Compras divididas mostram somente a parcela paga pela fonte
+              escolhida.
+            </p>
           )}
-        </div>
-        {filters.source !== "all" && (
-          <p>
-            Compras divididas mostram somente a parcela paga pela fonte
-            escolhida.
-          </p>
-        )}
-        <button
-          type="button"
-          className="text-button"
-          onClick={() => setFilters(noConsumptionFilters)}
-        >
-          Limpar filtros de consumo
-        </button>
-      </section>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => setFilters(noConsumptionFilters)}
+          >
+            Limpar filtros de consumo
+          </button>
+        </section>
+      </details>
       {personal && (
         <div className="metrics compact">
           <Metric
@@ -451,9 +455,10 @@ function ForecastPanel({
           </Field>
           <p>
             Histórico usa os meses anteriores ao período escolhido, com ao menos
-            3 competências. Usa os 3 meses consecutivos recentes ou os meses
-            disponíveis na janela de 6 meses; abaixo de 3 usa a referência.
-            Extras ficam separados e um recebimento isolado não define aumento.
+            3 meses de referência. Usa os 3 meses consecutivos recentes ou os
+            meses disponíveis na janela de 6 meses; abaixo de 3 usa a
+            referência. Extras ficam separados e um recebimento isolado não
+            define aumento.
           </p>
           {scenario === "manual" && (
             <Field label="Salário líquido mensal previsto (R$)">

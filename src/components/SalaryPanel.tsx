@@ -203,7 +203,7 @@ export default function SalaryPanel({
                   ? `${history.method}. Previsão: ${money(history.amount)}. Um bônus isolado não define o salário habitual.`
                   : forecastScenario === "conservative"
                     ? `Referência habitual: ${money(baseline)}.`
-                    : "Informe o valor esperado para esta competência."}
+                    : "Informe o valor esperado para este mês."}
               </p>
               <Field label="Data prevista do salário">
                 <input
@@ -266,9 +266,9 @@ export default function SalaryPanel({
                   defaultValue={receipt?.occurred_on}
                 />
               </Field>
-              <Field label="Mês salarial / competência">
+              <Field label="Mês de referência do salário">
                 <input
-                  aria-label="Mês salarial / competência"
+                  aria-label="Mês de referência do salário"
                   type="month"
                   name="salary_month"
                   required

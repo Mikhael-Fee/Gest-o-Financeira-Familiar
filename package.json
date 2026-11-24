@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:contrast": "node scripts/check-ui-contrast.mjs",
+    "test:ui": "node scripts/audit-ui-ux.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "format": "prettier --write src tests scripts public/*.js *.ts *.js *.json",
     "test:db": "vitest run tests/database.test.ts",

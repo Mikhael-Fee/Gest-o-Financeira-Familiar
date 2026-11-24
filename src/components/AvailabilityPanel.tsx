@@ -325,7 +325,7 @@ export default function AvailabilityPanel({
                   {r.description} · {money(r.amount)}
                 </strong>
                 <p>
-                  {r.expected_on} · competência {r.month} ·{" "}
+                  {r.expected_on} · mês de referência {r.month} ·{" "}
                   {r.kind === "benefit"
                     ? "benefício VA/VR"
                     : r.kind === "salary"
@@ -413,7 +413,7 @@ export default function AvailabilityPanel({
                   </option>
                 </select>
               </Field>
-              <Field label="Competência do recebimento">
+              <Field label="Mês de referência da entrada">
                 <input
                   type="month"
                   name="month"

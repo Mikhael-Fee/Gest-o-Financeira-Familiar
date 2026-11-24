@@ -1,3 +1,4 @@
+import { navigateUI } from "./helpers";
 // Browser integration with explicitly synthetic Auth/PostgREST responses.
 // Every request to the test backend is intercepted; no remote account is used.
 import { test, expect, type Page } from "@playwright/test";
@@ -166,12 +167,7 @@ async function backend(page: Page, accepted: boolean) {
   return observed;
 }
 async function openReports(page: Page) {
-  const menu = page.getByRole("button", { name: "Abrir menu" });
-  if (await menu.isVisible()) await menu.click();
-  await page
-    .locator("aside")
-    .getByRole("link", { name: "Relatórios", exact: true })
-    .click();
+  await navigateUI(page,"Relatórios");
 }
 test("login seleciona o próprio perfil com vários membros e gráficos usam o snapshot autenticado", async ({
   page,

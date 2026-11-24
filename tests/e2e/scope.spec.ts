@@ -1,3 +1,4 @@
+import { navigateUI, openRecords } from "./helpers";
 import { test, expect, type Page } from "@playwright/test";
 async function demo(page: Page) {
   await page.goto("/");
@@ -8,15 +9,13 @@ async function demo(page: Page) {
   await page.getByLabel("Mês de referência").fill("2026-11");
 }
 async function go(page: Page, name: string) {
-  const menu = page.getByRole("button", { name: "Abrir menu" });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator("aside").getByRole("link", { name, exact: true }).click();
+  await navigateUI(page, name);
 }
 test("Início da Casa não apresenta saldos ou benefícios pessoais", async ({
   page,
 }) => {
   await demo(page);
-  await page.getByRole("button", { name: "Casa", exact: true }).click();
+  await go(page, "Casa");
   await expect(page.getByText("Saldo em contas", { exact: true })).toHaveCount(
     0,
   );
@@ -29,8 +28,12 @@ test("Início da Casa não apresenta saldos ou benefícios pessoais", async ({
   await expect(page.getByText("Entradas do mês", { exact: true })).toHaveCount(
     0,
   );
-  await expect(page.locator(".metrics")).toContainText("Consumo da Casa");
-  await expect(page.locator(".metrics")).toContainText("400,00");
+  await expect(
+    page.getByRole("region", { name: "Resumo da Casa" }),
+  ).toContainText("Gastos da Casa no mês");
+  await expect(
+    page.getByRole("region", { name: "Resumo da Casa" }),
+  ).toContainText("400,00");
   await expect(page.locator("#main-content")).not.toContainText(
     "Empréstimo demonstrativo",
   );
@@ -45,9 +48,10 @@ test("navegação identifica Casa e contas pessoais de forma coerente", async ({
 }) => {
   await demo(page);
   await go(page, "Casa");
-  await expect(
-    page.getByRole("button", { name: "Casa", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#main-content")).toHaveAttribute(
+    "data-financial-scope",
+    "house",
+  );
   await go(page, "Contas e cartões");
   await expect(
     page.getByRole("button", { name: "Meu espaço", exact: true }),
@@ -58,9 +62,10 @@ test("navegação identifica Casa e contas pessoais de forma coerente", async ({
   await page.getByRole("button", { name: "Casa", exact: true }).click();
   await expect(page).toHaveURL(/\/casa$/);
   await go(page, "Configurações");
-  await expect(
-    page.getByRole("button", { name: "Meu espaço", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#main-content")).toHaveAttribute(
+    "data-financial-scope",
+    "personal",
+  );
 });
 test("planejamento da Casa mantém contratos pessoais no Meu espaço", async ({
   page,
@@ -86,8 +91,8 @@ test("adicionar na Casa oferece ações compartilhadas e marca a despesa", async
   page,
 }) => {
   await demo(page);
-  await page.getByRole("button", { name: "Casa", exact: true }).click();
-  await page.getByRole("button", { name: "Adicionar", exact: true }).click();
+  await go(page, "Casa");
+  await openRecords(page);
   const dialog = page.getByRole("dialog");
   await expect(
     dialog.getByRole("button", { name: /Salário ou entrada extra/ }),
@@ -99,9 +104,9 @@ test("adicionar na Casa oferece ações compartilhadas e marca a despesa", async
     dialog.getByLabel("Esta despesa é da Casa", { exact: true }),
   ).toBeChecked();
   await dialog.getByRole("button", { name: "Fechar formulário" }).click();
-  await page.getByRole("button", { name: "Meu espaço", exact: true }).click();
+  await go(page, "Início");
   await expect(page.locator(".house-panel")).toHaveCount(0);
-  await page.getByRole("button", { name: "Adicionar", exact: true }).click();
+  await openRecords(page);
   await expect(
     dialog.getByRole("button", { name: /Salário ou entrada extra/ }),
   ).toBeVisible();
@@ -121,11 +126,13 @@ test("troca de visão limpa busca e nova sessão começa no Meu espaço", async 
   await expect(
     page.getByText("Mercado da semana", { exact: true }),
   ).toBeVisible();
-  const menu = page.getByRole("button", { name: "Abrir menu" });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator("aside .profile").click();
+  await go(page, "Configurações");
+  await page
+    .getByRole("button", { name: "Sair e limpar sessão", exact: true })
+    .click();
   await page.getByRole("button", { name: "Explorar demonstração" }).click();
-  await expect(
-    page.getByRole("button", { name: "Meu espaço", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#main-content")).toHaveAttribute(
+    "data-financial-scope",
+    "personal",
+  );
 });

@@ -4,14 +4,14 @@ import type { AmountGroup } from "../domain/reports";
 import { Empty, Field } from "./ui";
 
 export const chartColors = [
-  "#8baeff",
-  "#7cdbc1",
-  "#f2c879",
-  "#bd9dfa",
-  "#f3a8c1",
-  "#6dd6dc",
-  "#e9a27f",
-  "#c2d889",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+  "var(--chart-4)",
+  "var(--chart-2)",
 ];
 export type ChartSeries = { label: string; color: string };
 export type ChartPoint = {
@@ -223,7 +223,7 @@ export function ColumnChart({
   useEffect(() => {
     if (!container.current || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(([entry]) =>
-      setWidth(Math.max(280, Math.floor(entry.contentRect.width))),
+      setWidth(Math.max(240, Math.floor(entry.contentRect.width))),
     );
     observer.observe(container.current);
     return () => observer.disconnect();
@@ -331,7 +331,7 @@ export function ColumnChart({
                     y={top}
                     width={step}
                     height={innerHeight}
-                    fill={i === activeIndex ? "#25384e" : "transparent"}
+                    fill={i === activeIndex ? "var(--raised)" : "transparent"}
                     rx="4"
                   />
                   {p.values.map((v, j) =>
@@ -349,7 +349,7 @@ export function ColumnChart({
                         )}
                         fill={series[j].color}
                         rx="3"
-                        stroke={p.estimated && j === 0 ? "#e8edf3" : "none"}
+                        stroke={p.estimated && j === 0 ? "var(--text)" : "none"}
                         strokeDasharray={
                           p.estimated && j === 0 ? "3 3" : undefined
                         }

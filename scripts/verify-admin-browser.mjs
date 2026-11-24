@@ -11,6 +11,8 @@ export async function verifyAdminBrowser({
   password,
   withFinancialData = false,
 }) {
+  if (origin !== "https://entre-nos-homologacao.netlify.app")
+    throw Error("Origem fora da homologação autorizada.");
   const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
   const browser = await chromium.launch({
     executablePath:
@@ -47,19 +49,14 @@ export async function verifyAdminBrowser({
     if (withFinancialData) {
       step = "lançamento fictício no site público";
       await page
-        .getByRole("button", { name: "Adicionar", exact: true })
-        .click();
-      await page
-        .getByRole("button", {
-          name: "Despesa Uma compra ou gasto do dia a dia",
-        })
+        .getByRole("button", { name: "Registrar gasto", exact: true })
         .click();
       const dialog = page.getByRole("dialog");
       const description = `Verificação fictícia de navegador ${crypto.randomUUID().slice(0, 8)}`;
       await dialog.getByLabel("Descrição / apelido").fill(description);
       await dialog.getByLabel("Valor (R$)", { exact: true }).fill("1,23");
       await dialog
-        .getByLabel("Conta de origem / destino")
+        .getByLabel("Conta utilizada")
         .selectOption({ label: "Conta exclusivamente fictícia A" });
       await dialog
         .getByRole("button", { name: "Salvar com segurança" })

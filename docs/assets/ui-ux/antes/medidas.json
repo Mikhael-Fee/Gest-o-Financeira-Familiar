@@ -1,0 +1,24 @@
+[
+  {
+    "name": "mobile",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "baseFont": "14px",
+    "pageHeight": 4174,
+    "smallestText": 8,
+    "smallControls": 21
+  },
+  {
+    "name": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "baseFont": "14px",
+    "pageHeight": 2698,
+    "smallestText": 8,
+    "smallControls": 27
+  }
+]

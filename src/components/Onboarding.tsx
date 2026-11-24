@@ -31,7 +31,7 @@ const steps: readonly Step[] = [
     title: "Planeje seu salário",
     description:
       "Informe sua referência de salário líquido e o dia provável de recebimento. Isso é uma previsão: não adiciona dinheiro ao saldo.",
-    help: "Quando o dinheiro chegar, registre Salário efetivamente recebido, com competência salarial e data de entrada. Extras e bônus ficam separados. Você pode ajustar só um mês sem apagar o histórico.",
+    help: "Quando o dinheiro chegar, registre Salário efetivamente recebido, com mês de referência e data de entrada. Extras e bônus ficam separados. Você pode ajustar só um mês sem apagar o histórico.",
     action: "salary",
     actionLabel: "Configurar referência de salário",
   },

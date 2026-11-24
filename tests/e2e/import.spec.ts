@@ -1,3 +1,4 @@
+import { navigateUI, openExpense } from "./helpers";
 import { expect, test, type Page } from "@playwright/test";
 async function demo(page: Page) {
   await page.goto("/");
@@ -8,9 +9,7 @@ async function demo(page: Page) {
   await page.getByLabel("Mês de referência").fill("2026-11");
 }
 async function go(page: Page, name: string) {
-  const menu = page.getByRole("button", { name: "Abrir menu" });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator("aside").getByRole("link", { name, exact: true }).click();
+  await navigateUI(page,name);
 }
 const csv =
   "Data;Descrição;Valor;Documento\n10/11/2026;Compra importada fictícia;-20,50;demo-bank-import-1\n11/11/2026;Extra importado fictício;50,00;demo-bank-import-2";
@@ -84,18 +83,15 @@ test("etiqueta usada pode ser renomeada com histórico preservado", async ({
   page,
 }) => {
   await demo(page);
-  await page.getByRole("button", { name: "Adicionar", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Despesa Uma compra ou gasto do dia a dia" })
-    .click();
+  await openExpense(page);
   const dialog = page.getByRole("dialog");
   await dialog
     .getByLabel("Descrição / apelido")
     .fill("Compra com etiqueta fictícia");
   await dialog.getByLabel("Valor (R$)", { exact: true }).fill("10,00");
-  await dialog.getByLabel("Data efetiva da operação").fill("2026-11-10");
-  await dialog.getByLabel("Conta de origem / destino").selectOption("bank-a");
-  await dialog.getByText("Consumidor e responsável financeiro").click();
+  await dialog.getByLabel("Data da compra").fill("2026-11-10");
+  await dialog.getByLabel("Conta utilizada").selectOption("bank-a");
+  await dialog.getByText("Mais opções do gasto",{exact:true}).click();
   await dialog.getByLabel("Tags separadas por vírgulas").fill("Viagem teste");
   await dialog.getByRole("button", { name: "Salvar com segurança" }).click();
   await go(page, "Configurações");

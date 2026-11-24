@@ -1,15 +1,11 @@
+import { navigateUI } from "./helpers";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 async function open(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Explorar demonstração" }).click();
   await page.getByLabel("Mês de referência").fill("2026-11");
-  const menu = page.getByRole("button", { name: "Abrir menu" });
-  if (await menu.isVisible()) await menu.click();
-  await page
-    .locator("aside")
-    .getByRole("link", { name: "Relatórios", exact: true })
-    .click();
+  await navigateUI(page, "Relatórios");
   await expect(
     page.getByRole("heading", { name: "Seus relatórios", exact: true }),
   ).toBeVisible();
@@ -37,7 +33,7 @@ test("disponível mantém caixa separado de previsão, permite confirmar e isola
     .fill("Extra fictício verificável");
   await panel.getByLabel("Valor previsto (R$)").fill("125,00");
   await panel.getByLabel("Data prevista da entrada").fill("2026-11-15");
-  await panel.getByLabel("Competência do recebimento").fill("2026-11");
+  await panel.getByLabel("Mês de referência da entrada").fill("2026-11");
   await panel
     .getByLabel("Conta do recebimento ou reserva")
     .selectOption("bank-a");

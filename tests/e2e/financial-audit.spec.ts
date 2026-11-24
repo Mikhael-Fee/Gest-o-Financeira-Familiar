@@ -1,8 +1,7 @@
+import { navigateUI } from "./helpers";
 import { test, expect, type Page } from "@playwright/test";
 async function nav(page: Page, name: string) {
-  const menu = page.getByRole("button", { name: "Abrir menu" });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator("aside").getByRole("link", { name, exact: true }).click();
+  await navigateUI(page,name);
 }
 test("relatórios explicam orçamento estrito, consumo atribuído e dinheiro destinado à Casa", async ({
   page,

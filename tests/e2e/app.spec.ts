@@ -1,3 +1,4 @@
+import { navigateUI, openExpense, openReportFilters } from "./helpers";
 import { test, expect } from "@playwright/test";
 async function demo(page: import("@playwright/test").Page) {
   await page.goto("/");
@@ -8,9 +9,7 @@ async function demo(page: import("@playwright/test").Page) {
   await page.getByLabel("Mês de referência").fill("2026-11");
 }
 async function go(page: import("@playwright/test").Page, name: string) {
-  const menu = page.getByRole("button", { name: "Abrir menu" });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator("aside").getByRole("link", { name, exact: true }).click();
+  await navigateUI(page, name);
 }
 test("navegação, relatório e segurança de saída", async ({ page }) => {
   await demo(page);
@@ -37,15 +36,14 @@ test("cria despesa com duas fontes e reflete nos saldos sem duplicar", async ({
   page,
 }) => {
   await demo(page);
-  await page.getByRole("button", { name: "Adicionar", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Despesa Uma compra ou gasto do dia a dia" })
-    .click();
+  await openExpense(page);
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Descrição / apelido").fill("Feira de teste");
   await dialog.getByLabel("Valor (R$)", { exact: true }).fill("100,00");
-  await dialog.getByLabel("Data efetiva da operação").fill("2026-11-10");
-  await dialog.getByLabel("Conta de origem / destino").selectOption("va-a");
+  await dialog.getByLabel("Data da compra").fill("2026-11-10");
+  await dialog.getByLabel("Forma de pagamento").selectOption("VA");
+  await dialog.getByLabel("Conta utilizada").selectOption("va-a");
+  await dialog.getByText("Mais opções do gasto", { exact: true }).click();
   await dialog.getByText("Dividir entre dois meios de pagamento").click();
   await dialog
     .getByLabel("Segundo meio", { exact: true })
@@ -110,10 +108,7 @@ test("acessibilidade WCAG AA nas telas principais e formulário", async ({
       nodes: v.nodes.map((n) => n.target),
     })),
   ).toEqual([]);
-  await page.getByRole("button", { name: "Adicionar", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Despesa Uma compra ou gasto do dia a dia" })
-    .click();
+  await openExpense(page);
   results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
@@ -126,10 +121,7 @@ test("acessibilidade WCAG AA nas telas principais e formulário", async ({
 });
 test("corrige valores inválidos sem perder o formulário", async ({ page }) => {
   await demo(page);
-  await page.getByRole("button", { name: "Adicionar", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Despesa Uma compra ou gasto do dia a dia" })
-    .click();
+  await openExpense(page);
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Descrição / apelido").fill("Teste de saldo");
   await dialog.getByLabel("Valor (R$)", { exact: true }).fill("0");
@@ -147,10 +139,7 @@ test("categoria própria aparece no formulário de despesa", async ({ page }) =>
   await dialog.getByLabel("Descrição / apelido").fill("Feira do bairro");
   await dialog.getByRole("button", { name: "Salvar com segurança" }).click();
   await expect(page.getByRole("status")).toContainText("Salvo");
-  await page.getByRole("button", { name: "Adicionar", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Despesa Uma compra ou gasto do dia a dia" })
-    .click();
+  await openExpense(page);
   await expect(
     page
       .getByRole("dialog")
@@ -173,6 +162,10 @@ test("confirmar Pix reduz acerto mas não quita fatura", async ({ page }) => {
     page.locator(".settlement").getByText("R$ 250,00", { exact: true }),
   ).toBeVisible();
   await go(page, "Contas e cartões");
+  await page
+    .getByText("Ver faturas, compras e parcelas", { exact: true })
+    .first()
+    .click();
   await expect(
     page.locator(".statement-grid").getByText(/Em aberto:.*1.000,00/),
   ).toBeVisible();
@@ -250,7 +243,7 @@ test("salário mensal troca previsão por recebido e corrige sem duplicar", asyn
   await dialog.getByLabel("Valor (R$)", { exact: true }).fill("3200");
   await dialog.getByLabel("Data efetiva da operação").fill("2026-11-10");
   await dialog
-    .getByLabel("Mês salarial / competência", { exact: true })
+    .getByLabel("Mês de referência do salário", { exact: true })
     .fill("2026-11");
   await dialog.getByLabel("Conta de origem / destino").selectOption("bank-a");
   await dialog.getByRole("button", { name: "Salvar com segurança" }).click();
@@ -294,6 +287,7 @@ test("gráficos interativos filtram somente a parcela paga pela fonte escolhida"
   await page.keyboard.press("Enter");
   await expect(food).toHaveAttribute("aria-pressed", "true");
   await expect(category.locator(".chart-selection")).toContainText("400,00");
+  await openReportFilters(page);
   await page
     .getByLabel("Fonte do consumo", { exact: true })
     .selectOption("account:bank-a");
@@ -317,6 +311,7 @@ test("gráficos comparam 12 meses, têm tabela alternativa e estado vazio", asyn
 }) => {
   await demo(page);
   await go(page, "Relatórios");
+  await openReportFilters(page);
   await page
     .getByLabel("Janela de comparação", { exact: true })
     .selectOption("12");
@@ -375,6 +370,7 @@ test("relatórios da Casa preservam rendas, contratos e metas privadas", async (
   await expect(contributions.locator(".chart-selection")).toContainText(
     "Não compartilhada",
   );
+  await openReportFilters(page);
   await page
     .getByLabel("Pessoa que consumiu", { exact: true })
     .selectOption("b");

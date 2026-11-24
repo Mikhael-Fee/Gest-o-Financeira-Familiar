@@ -44,6 +44,16 @@ export function Metric({
 export function Empty({ children }: { children: ReactNode }) {
   return <p className="empty">{children}</p>;
 }
-export function Badge({ children }: { children: ReactNode }) {
-  return <span className="badge">{children}</span>;
+export function Badge({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone?: "warning" | "positive" | "danger";
+}) {
+  return (
+    <span className="badge" data-tone={tone}>
+      {children}
+    </span>
+  );
 }

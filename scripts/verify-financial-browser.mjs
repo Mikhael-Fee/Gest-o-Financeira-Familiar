@@ -3,6 +3,7 @@ import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
+import { navigateBrowser } from "./browser-navigation.mjs";
 export async function verifyFinancialBrowser({
   origin,
   fixturePath,
@@ -59,14 +60,7 @@ export async function verifyFinancialBrowser({
           `${label}: resultado divergente`,
         );
       };
-      const nav = async (name) => {
-        const menu = page.getByRole("button", { name: "Abrir menu" });
-        if (await menu.isVisible()) await menu.click();
-        await page
-          .locator("aside")
-          .getByRole("link", { name, exact: true })
-          .click();
-      };
+      const nav = (name) => navigateBrowser(page, name);
       if (member === 1) {
         await nav("Relatórios");
         await page
@@ -122,6 +116,11 @@ export async function verifyFinancialBrowser({
           (await page.locator("body").innerText()).includes("2.500,00"),
         );
       } else {
+        await page
+          .getByText("Entender minha estimativa e conferir saldos", {
+            exact: true,
+          })
+          .click();
         await metric("Disponível estimado sem receitas futuras", "700,00");
         assert.ok(
           (
@@ -139,7 +138,7 @@ export async function verifyFinancialBrowser({
       }
       step = `acessibilidade do membro ${member}`;
       const accessibility = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
       if (accessibility.violations.length)
         await writeFile(

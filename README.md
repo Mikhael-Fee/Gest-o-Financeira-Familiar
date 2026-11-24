@@ -6,6 +6,8 @@ Aplicação React/TypeScript/PWA com núcleo financeiro em centavos inteiros, in
 
 [Homologação autenticada e entrega atual](docs/CONCLUSAO_HOMOLOGACAO.md) · [Matriz de requisitos](docs/MATRIZ_DE_CONCLUSAO.md).
 
+[Revisão mobile, temas e acessibilidade](docs/REVISAO_UI_UX_MOBILE.md), com comparação visual e resultados próprios. A demonstração guarda somente preferências de aparência no aparelho; os dados financeiros continuam descartáveis.
+
 ## Executar
 
 ```sh
@@ -22,6 +24,7 @@ Para integrar um Supabase de desenvolvimento, siga [DEPLOY.md](docs/DEPLOY.md), 
 ```sh
 npm run lint
 npm run typecheck
+npm run test:contrast
 npm test
 npm run build
 npx playwright install chromium
