@@ -264,3 +264,28 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .cabeca-botoes { display: flex; gap: 8px; }
 .ok-texto { color: var(--accent); font-weight: 700; margin: 0; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Usabilidade: botão de lançar sempre à mão, letra e botões maiores, ícones por categoria. */
+body { font-size: 16px; }
+.btn.flutuante { position: fixed; z-index: 7; right: max(16px, calc((100vw - 460px) / 2 + 16px)); bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  min-height: 56px; padding: 14px 22px; border-radius: 999px; font-size: 17px; box-shadow: 0 6px 18px rgba(0, 0, 0, .22); }
+.app { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+.aviso { bottom: calc(152px + env(safe-area-inset-bottom, 0px)); font-size: 15px; }
+.btn.pequeno { min-height: 44px; padding: 10px 14px; font-size: 15px; }
+.icone { width: 42px; height: 42px; font-size: 13px; border-radius: 12px; }
+.icone .emoji { font-size: 21px; line-height: 1; }
+.icone.mini .emoji { font-size: 14px; }
+.avatar { width: 42px; height: 42px; font-size: 17px; }
+.texto span, .mini, .nota, .sub { font-size: 14px; }
+.mini-cinza, .selo, .rotulo { font-size: 13px; }
+.campo { font-size: 15px; }
+.link { font-size: 15px; padding: 8px 0; }
+.abas button { font-size: 13px; }
+.abas button svg { width: 24px; height: 24px; }
+.chips button { padding: 8px 14px; font-size: 14px; }
+.segmento button { font-size: 15px; min-height: 46px; }
+.segmento.tres-op button { font-size: 14px; }
+.duas b, .tres b { font-size: 17px; }
+.seta.troca { width: 44px; height: 44px; }
+.btn-icone { width: 44px; height: 44px; }
+.marcar-item input, .campo.marcar input { width: 24px; height: 24px; }
