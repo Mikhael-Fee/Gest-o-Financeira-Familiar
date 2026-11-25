@@ -166,7 +166,7 @@ function Inicio({ sessao, sair, trocarDemo }: { sessao: Sessao; sair: () => void
         </div>
         {sessao.demo && (
           <div className="demo" role="group" aria-label="Ver como">
-            <span>Demonstração · ver como</span>
+            <span>Demonstração: ver como</span>
             <div className="chips">
               {PERFIS_DEMO.map((p) => (
                 <button key={p.id} aria-pressed={p.id === perfil.id} onClick={() => trocarDemo(p)}>
