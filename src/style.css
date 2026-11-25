@@ -1,16 +1,19 @@
 :root {
-  --bg: #eef2f1; --surface: #ffffff; --surface-2: #e3eae8; --fg: #13211f; --muted: #5b6d69;
-  --line: #d3ddda; --accent: #0f6b5c; --accent-fg: #ffffff; --accent-soft: #d5ece6;
-  --benefit: #b45309; --benefit-soft: #fcebd5; --bad: #b91c1c;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  /* Azulejo: cobalto sobre porcelana, girassol para VR/VA. */
+  --bg: #f3f5fa; --surface: #ffffff; --surface-2: #e7ebf5; --fg: #142042; --muted: #56607d;
+  --line: #d7ddeb; --accent: #1d3f9a; --accent-fg: #ffffff; --accent-soft: #dfe6fb;
+  --benefit: #94580a; --benefit-soft: #fbedc9; --bad: #b4232c;
+  --tile-ink: rgba(255, 255, 255, .16);
+  --display: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0e1615; --surface: #162220; --surface-2: #1e2d2a; --fg: #e6eeec; --muted: #93a6a2;
-    --line: #2a3b38; --accent: #4fc3a8; --accent-fg: #06201b; --accent-soft: #173a33;
-    --benefit: #f2a54a; --benefit-soft: #3a2a14; --bad: #f87171;
+    --bg: #0d1327; --surface: #151d3a; --surface-2: #1e2850; --fg: #e8ecf8; --muted: #9aa5c6;
+    --line: #283461; --accent: #9db3ff; --accent-fg: #0d1640; --accent-soft: #1f2c63;
+    --benefit: #f2c14e; --benefit-soft: #3a2e10; --bad: #ff8a8f;
+    --tile-ink: rgba(13, 22, 64, .22);
     color-scheme: dark;
   }
 }
@@ -289,3 +292,72 @@ body { font-size: 16px; }
 .seta.troca { width: 44px; height: 44px; }
 .btn-icone { width: 44px; height: 44px; }
 .marcar-item input, .campo.marcar input { width: 24px; height: 24px; }
+
+/* ===== Visual novo: "Azulejo" =====
+   Um único elemento ousado: o quadro de destaque é um painel de azulejo cobalto.
+   O resto fica quieto: porcelana, bordas finas, sem sombras. */
+body { font-weight: 500; }
+.rotulo { text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 700; opacity: .9; }
+h1, h2 { font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 19px; }
+.marca-mini { font-size: 22px; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+.marca-mini::before { content: ""; width: 26px; height: 26px; border-radius: 7px; flex: none; background-color: var(--accent); background-image: var(--azulejo); background-size: 26px 26px; }
+.marca h1 { font-size: 36px; letter-spacing: -.03em; }
+.marca img { border-radius: 16px; }
+
+:root {
+  --azulejo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64' fill='none' stroke='white' stroke-width='1.6'%3E%3Cpath d='M0 16A16 16 0 0 0 16 0M48 0a16 16 0 0 0 16 16M64 48a16 16 0 0 0-16 16M16 64A16 16 0 0 0 0 48'/%3E%3Cpath d='M32 14c5 8 5 10 0 18-5-8-5-10 0-18zM32 50c-5-8-5-10 0-18 5 8 5 10 0 18zM14 32c8-5 10-5 18 0-8 5-10 5-18 0zM50 32c-8 5-10 5-18 0 8-5 10-5 18 0z'/%3E%3Ccircle cx='32' cy='32' r='3'/%3E%3C/svg%3E");
+}
+
+/* Destaque: o azulejo. */
+.destaque { position: relative; overflow: hidden; isolation: isolate; border-radius: 22px; padding: 20px 20px 22px; background: var(--accent); }
+.destaque::before { content: ""; position: absolute; inset: 0; z-index: -1; background-image: var(--azulejo); background-size: 64px 64px; background-position: -8px -8px; opacity: .14;
+  -webkit-mask-image: linear-gradient(115deg, transparent 35%, #000 85%); mask-image: linear-gradient(115deg, transparent 35%, #000 85%); }
+@media (prefers-color-scheme: dark) { .destaque { background: #2848b4; color: #fff; } .destaque::before { opacity: .16; } }
+.valor-grande { font-size: 42px; letter-spacing: -.035em; font-weight: 700; margin-top: 2px; }
+.destaque .duas { padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.destaque .mini { opacity: .9; font-size: 15px; }
+
+/* Painéis: brancos e quietos, com borda fina em vez de sombra. */
+.painel { border: 1px solid var(--line); border-radius: 18px; padding: 18px; gap: 14px; }
+.beneficio { border-color: color-mix(in srgb, var(--benefit) 35%, var(--line)); background: color-mix(in srgb, var(--benefit-soft) 45%, var(--surface)); }
+
+/* Pendências: um bilhete na geladeira, com a faixa de girassol. */
+.pendencias { border: 0; border-left: 6px solid var(--benefit); background: var(--benefit-soft); border-radius: 6px 18px 18px 6px; }
+.pendencias h2 { color: var(--benefit); }
+.pendencias .lista li { border-color: color-mix(in srgb, var(--benefit) 25%, transparent); }
+.pendencias .avatar { background: var(--surface); }
+
+/* Seletor de mês sem caixa: o mês é o título da página. */
+.mes { background: none; padding: 0; font: 700 21px var(--display); letter-spacing: -.01em; }
+.seta { background: var(--surface); border: 1px solid var(--line); width: 44px; height: 44px; border-radius: 50%; font-size: 24px; display: grid; place-items: center; padding-bottom: 3px; }
+
+/* Botões. */
+.btn { border-radius: 14px; font-family: var(--body); }
+.btn.fantasma { background: var(--surface); border: 1px solid var(--line); }
+.btn.flutuante { border-radius: 18px; box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--accent) 70%, transparent); background-image: linear-gradient(var(--accent), var(--accent)); }
+.btn-icone { border: 1px solid var(--line); border-radius: 50%; }
+.chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.segmento button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.demo { background: none; border: 1px dashed var(--line); }
+
+/* Ícones e avatares redondos, para conversar com o azulejo. */
+.avatar { border-radius: 50%; font-family: var(--display); }
+.icone { border-radius: 14px; }
+.valor { font-family: var(--display); font-size: 17px; letter-spacing: -.01em; }
+.valor-grande, .grande, .duas b, .tres b, .acumulado b { font-family: var(--display); }
+
+/* Abas: a aba atual ganha uma pílula atrás do ícone. */
+.abas { background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); }
+.abas button { padding-top: 8px; }
+.abas button svg { box-sizing: content-box; padding: 4px 18px; border-radius: 999px; }
+.abas button[aria-current="page"] svg { background: var(--accent-soft); }
+.abas button[aria-current="page"] { color: var(--fg); }
+.abas button[aria-current="page"] svg { color: var(--accent); }
+
+.barra i, .trilho .preenche, .limite-barra span { background: var(--accent); }
+.barra i.beneficio { background: var(--benefit); }
+.campo input, .campo select { border-radius: 12px; background: var(--surface); }
+.folha { border-radius: 24px 24px 0 0; }
+.titulo-pagina { font-size: 30px; letter-spacing: -.03em; }
+.pendencias .texto b { white-space: normal; }

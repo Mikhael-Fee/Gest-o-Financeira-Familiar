@@ -165,7 +165,7 @@ export function Minhas({ repo, perfil, casa, familia }: { repo: Repositorio; per
       </section>
 
       {(pendencias > 0) && (
-        <section className="painel">
+        <section className="painel pendencias">
           <h2>Pendências</h2>
           <ul className="lista">
             {receberPorPessoa.map((g) => {
